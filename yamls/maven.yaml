@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: maven-container
+spec:
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    fsGroupChangePolicy: "Always"
+    fsGroup: 1000
+  containers:
+  - name: maven
+    image: docker-sqm.mci.ir/maven-21:v2
+    env:
+    - name: JAVA_OPTS
+      value: "-Duser.home=/tmp/"
+
+    command:
+      - sh
+      - -c
+      - |
+        sleep infinity
+
+    volumeMounts:
+      - mountPath: /tmp/.m2
+        name: m2-pvc
+        readOnly: false
+      - mountPath: /tmp/.m2/settings.xml
+        name: maven-setting-file
+        subPath: settings.xml
+
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+      privileged: false
+      seccompProfile:
+        type: RuntimeDefault
+      capabilities:
+        drop:
+          - ALL 
+
+    resources:
+      limits:
+        cpu: 3
+        memory: 6024M
+      requests:
+        cpu: 1
+        memory: 1024Mi
+  
+  volumes:
+    - name: m2-pvc
+      persistentVolumeClaim:
+        claimName: m2-pvc
+    - name: maven-setting-file
+      configMap:
+        name: maven-setting-file
