@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+
+	<profiles>
+		<profile>
+			<id>snapshot</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<repositories>
+				<repository>
+					<id>local-folder-repo</id>
+					<url>file:///tmp/.m2/repository</url>
+					<releases>
+						<enabled>true</enabled>
+					</releases>
+					<snapshots>
+						<enabled>false</enabled>
+					</snapshots>
+				</repository>
+				<repository>
+					<id>local-maven-repository</id>
+					<url>http://10.19.161.33:8081/repository/maven-central/</url>
+					<releases>
+						<enabled>true</enabled>
+					</releases>
+					<snapshots>
+						<enabled>true</enabled>
+					</snapshots>
+				</repository>
+			</repositories>
+		</profile>
+	</profiles>
+
+	<servers>
+		<server>
+			<id>local-maven-repository</id>
+			<username></username>
+			<password></password>
+		</server>
+	</servers>
+
+	<mirrors>
+		<mirror>
+			<id>local-maven-repository</id>
+			<mirrorOf>*</mirrorOf>
+			<name>local-maven-repository</name>
+			<url>http://10.19.161.33:8081/repository/maven-central/</url>
+		</mirror>
+	</mirrors>
+
+	<localRepository>/tmp/.m2/repository</localRepository>
+</settings>

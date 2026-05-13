@@ -1,0 +1,80 @@
+package ir.mohaymen.sqm.app.ims.infregistersip.summary.analysis;
+
+import ir.mohaymen.sqm.app.Summary;
+import ir.mohaymen.sqm.connectors.Sink;
+import ir.mohaymen.sqm.connectors.Source;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+
+import java.util.Map;
+import ir.mohaymen.sqm.app.Job;
+import static org.apache.spark.sql.functions.*;
+import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.sum;
+import static org.apache.spark.sql.functions.when;
+
+@Job
+public class IMSInfRegisterSIPAnalysisSummary extends Summary {
+    public IMSInfRegisterSIPAnalysisSummary(Source source, Sink sink, Map<String, Dataset<Row>> reference) {
+        super(source, sink, reference);
+    }
+
+    @Override
+    protected Dataset<Row> selectColumns(Dataset<Row> ds) {
+        return ds.select("RECORD_DATE","Table_id", "Registration_Type", "Service_Status",
+                "Interface_Type", "Source_NE_Type","Source_NE_Name", "Destination_NE_Type","Destination_NE_Name",
+                "Country", "RegionName", "ProvinceName", "CityName",  "Authentication_Mode",
+                "Release_Cause_Code",
+                "End_Time_ms");
+    }
+
+
+    @Override
+    protected Dataset<Row> analyze(Dataset<Row> ds) {
+        ds =ds.filter(col("RECORD_DATE").gt("2026-01-11 12:30:00"));
+
+        ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "15 minutes").getField("start"));
+
+        ds = ds.withColumn("SuccessCount", when(col("Service_Status").equalTo(0)
+                        , 1).otherwise(0))
+                .withColumn("FailCount", when(col("Service_Status").equalTo(1)
+                        , 1).otherwise(0));
+
+        ds = ds.withColumnRenamed("RegionName", "Region")
+                .withColumnRenamed("ProvinceName", "Province")
+                .withColumnRenamed("CityName", "City");
+
+        ds = aggregateFunc(ds);
+
+        ds = generateKeyHash(ds, new String[]{
+                "Table_id", "Registration_Type", "Service_Status",
+                "Interface_Type", "Source_NE_Type","Source_NE_Name", "Destination_NE_Type","Destination_NE_Name",
+                "Country", "Region", "Province", "City",  "Authentication_Mode",
+                "Release_Cause_Code"});
+
+        System.out.println("output schema:");
+        ds.printSchema();
+
+        return ds;
+    }
+
+
+    private Dataset<Row> aggregateFunc(Dataset<Row> ds) {
+        ds = ds.withWatermark("RECORD_DATE", "1440 minutes")
+                .groupBy("RECORD_DATE","Table_id", "Registration_Type", "Service_Status",
+                        "Interface_Type", "Source_NE_Type","Source_NE_Name", "Destination_NE_Type","Destination_NE_Name",
+                         "Country", "Region", "Province", "City",  "Authentication_Mode",
+                        "Release_Cause_Code")
+                .agg(
+//                      Success Count
+                        sum("SuccessCount").alias("SuccessCount"),
+//                      Fail Count
+                        sum("FailCount").alias("FailCount"),
+//                      Total Count
+                        sum(col("SuccessCount").plus(col("FailCount"))).alias("TotalCount"),
+//                      Delay ms
+                        sum(when(col("Service_Status").equalTo(0), col("End_Time_ms")).otherwise(0)).alias("Delay_ms")
+                );
+        return ds;
+    }
+}
