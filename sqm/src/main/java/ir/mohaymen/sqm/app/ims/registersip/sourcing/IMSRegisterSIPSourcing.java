@@ -1,4 +1,4 @@
-package ir.mohaymen.sqm.app.ims.infregistersip.sourcing;
+package ir.mohaymen.sqm.app.ims.registersip.sourcing;
 
 import com.amazonaws.services.frauddetector.model.DataType;
 import ir.mohaymen.sqm.app.Sourcing;
