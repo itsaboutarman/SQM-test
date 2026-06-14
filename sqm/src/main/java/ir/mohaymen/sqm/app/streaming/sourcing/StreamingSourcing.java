@@ -9,7 +9,10 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.streaming.DataStreamWriter;
 import org.apache.spark.sql.streaming.StreamingQuery;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.hadoop.shaded.org.eclipse.jetty.util.ArrayUtil;
 
+import javax.xml.crypto.Data;
 import java.util.Arrays;
 import java.util.Map;
 import static org.apache.spark.sql.functions.*;
@@ -26,123 +29,225 @@ public class StreamingSourcing extends Sourcing {
         return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
     }
 
-
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {
-
-        Dataset<Row> sgsnRef = references.get("sgsnRef");
-        Dataset<Row> ggsnRef = references.get("ggsnRef");
-        Dataset<Row> tacRef = references.get("tacRef");
-        Dataset<Row> locationRef = references.get("locationRef");
+        Dataset<Row> appRef = references.get("appRef");
+        Dataset<Row> deviceRef = references.get("deviceRef");
+        Dataset<Row> location2gRef = references.get("location2gRef");
+        Dataset<Row> location3gRef = references.get("location3gRef");
+        Dataset<Row> location4gRef = references.get("location4gRef");
+        Dataset<Row> ggsnRef = getReference("ggsnRef");
+        Dataset<Row> sgsnRef = getReference("sgsnRef");
+        Dataset<Row> sgw_pgw_ref = getReference("sgwPgwRef");
         Dataset<Row> protocolRef = references.get("protocolRef");
-        Dataset<Row> protocolCategoryRef = references.get("protocolCategoryRef");
-        Dataset<Row> sgwPgwRef = references.get("sgwPgwRef");
-        Dataset<Row> cell2gRef = references.get("cell2gRef");
-        Dataset<Row> cell3gRef = references.get("cell3gRef");
-        Dataset<Row> cell4gRef = references.get("cell4gRef");
+        Dataset<Row> apnDashboardRef = references.get("apnDashboardRef");
 
-        sgsnRef = sgsnRef.withColumnRenamed("NE_Name","SGSN")
-                .withColumnRenamed("Home_SGSN_Pool_Name","SGSN_POOL");
-        ggsnRef = ggsnRef.withColumnRenamed("NE_Name","GGSN");
-        Dataset<Row> sgwRef = sgwPgwRef.withColumnRenamed("NE_Name","SGW");
-        Dataset<Row> pgwRef = sgwPgwRef.withColumnRenamed("NE_Name","PGW");
+        // Aplication Reference
+        appRef = appRef.select("Application_ID" , "Application_Name");
+        appRef.persist();
 
-        Dataset<Row> refEcgi = locationRef.where(col("NE_Type").equalTo("ECGI"));
-        locationRef = locationRef.where(col("NE_Type").notEqual("ECGI"));
+        // Device Reference
+        deviceRef = deviceRef.select("TAC", "TER_BRAND_NAME", "TER_MODEL_NAME", "TER_MODENAME", "TER_TYPE_NAME_EN",
+                        "TER_OS_TYPE_NAME").withColumn("TAC_padded", lpad(deviceRef.col("TAC"), 8, "0"))
+                .drop("TAC");
+        deviceRef.persist();
 
+        // Location Reference
+        location4gRef = location4gRef.select("City", "Province", "region", "country", "ENODEB_ID",
+                "Cell_Name", "AZIMUTH", "Cell_ID", "LAT", "LNG");
 
-        cell2gRef = cell2gRef.withColumnRenamed("LAC","LAC2g")
-                .withColumnRenamed("Cell_Name","Cell_Name2g");
-        cell3gRef = cell3gRef.withColumnRenamed("LAC","LAC3g");
-        cell4gRef = cell4gRef.withColumnRenamed("Cell_Name","Cell_Name4g");
+        location3gRef = location3gRef.select("LAC", "SAC", "City", "Province", "region", "country", "RNC",
+                        "NODEB_LABEL", "LAT", "LNG" , "Service_Area_Name", "AZIMUTH")
+                .withColumnRenamed("LAC" ,"LAC3g");
 
-        locationRef.persist();
-        refEcgi.persist();
-        protocolRef = protocolRef.select("Protocol", "Protocol_ID")
-                .withColumnRenamed("Protocol","Protocol_name");
-        protocolRef.persist();
-        protocolCategoryRef = protocolCategoryRef.select("Protocol", "Protocol_Category_ID")
-                .withColumnRenamed("Protocol","Protocol_Category_name");
-        protocolCategoryRef.persist();
-        tacRef = tacRef.withColumn("TAC",lpad(col("TAC"),8,"0")).withColumnRenamed("TAC","TAC_ID");
-        tacRef.persist();
+        location3gRef = location3gRef.withColumn("LAC3g_hex",
+                        hex(location3gRef.col("LAC3g").cast(DataTypes.IntegerType)))
+                .withColumn("SAC3g_hex", hex(location3gRef.col("SAC").cast(DataTypes.IntegerType)))
+                .drop("SAC");
+
+        location2gRef =  location2gRef.select("LAC", "CID", "City", "Province", "region", "country", "Cell_Name",
+                "BSC", "SITE_Name", "LAT", "LNG" , "AZIMUTH", "VENDOR");
+        location2gRef = location2gRef
+                .withColumnRenamed("LAC", "LAC2g")
+                .withColumnRenamed("CID", "CID2g")
+                .withColumn("LAC2g_hex", hex(col("LAC2g").cast(DataTypes.IntegerType)))
+                .withColumn("CID_hex", hex(col("CID2g").cast(DataTypes.IntegerType)));
+        location4gRef.persist();
+        location3gRef.persist();
+        location2gRef.persist();
+        apnDashboardRef.persist();
+
+        // NE Information Reference
+        sgsnRef = sgsnRef.select("NE_Name", "Home_SGSN_Pool_Name", "User_Plane_IP_Address")
+                .withColumnRenamed("NE_Name", "SGSN")
+                .withColumnRenamed("Home_SGSN_Pool_Name", "SGSN_POOL");
+        ggsnRef = ggsnRef.select("NE_Name", "User_Plane_IP_Address")
+                .withColumnRenamed("NE_Name", "GGSN");
+        Dataset<Row> sgwRef = sgw_pgw_ref.select("NE_Name", "ip")
+                .withColumnRenamed("NE_Name", "SGW");
+        Dataset<Row> pgwRef = sgw_pgw_ref.select("NE_Name", "ip")
+                .withColumnRenamed("NE_Name", "PGW");
 
         ggsnRef.persist();
         sgsnRef.persist();
         sgwRef.persist();
         pgwRef.persist();
 
-        cell2gRef.persist();
-        cell3gRef.persist();
-        cell4gRef.persist();
+        // Protocol Reference
+        protocolRef =  protocolRef.select("Protocol_ID", "Protocol_Name");
+        protocolRef.persist();
 
-        ds = ds.withColumn("RECORD_DATE", from_unixtime(col("Start_Time_s")))
+        // Partition Column
+        ds = ds.withColumn("RECORD_DATE", from_unixtime(col("BEGIN_TIME")))
                 .withColumn("RECORD_DATE", to_timestamp(col("RECORD_DATE"), "yyyy-MM-dd HH:mm:ss"));
         ds = addTimeColumns(ds);
 
-
-        Column location_cond1 = ((ds.col("ECI").isNotNull()).and(ds.col("ECI").equalTo(col("ref_ecgi.NE_ID_3"))));
-        Column location_cond2 = ((ds.col("ECI").isNull()).and(ds.col("LAC").isNotNull()).and(ds.col("SAC").isNotNull()).and(ds.col("LAC").equalTo(col("new_ref2.NE_ID_3"))).and(ds.col("SAC").equalTo(col("new_ref2.NE_ID_4"))));
-        Column location_cond3 = ((ds.col("ECI").isNull()).and(ds.col("LAC").isNotNull()).and(ds.col("CI").isNotNull()).and(ds.col("LAC").equalTo(col("new_ref3.NE_ID_3"))).and(ds.col("CI").equalTo(col("new_ref3.NE_ID_4"))));
-
-        Column cell4g_cond = ((ds.col("ECI").isNotNull()).and(substring(ds.col("ECI"), 1, 5).equalTo(cell4gRef.col("eNodeB_ID_Hex"))).and(substring(ds.col("ECI"), -2, 2).equalTo(cell4gRef.col("Cell_ID_Hex"))));
-        Column cell3g_cond = ((ds.col("ECI").isNull()).and(ds.col("LAC").isNotNull()).and(ds.col("SAC").isNotNull()).and(ds.col("LAC").equalTo(cell3gRef.col("LAC3g"))).and(ds.col("SAC").equalTo(cell3gRef.col("Service_Area_Code"))));
-        Column cell2g_cond = ((ds.col("ECI").isNull()).and(ds.col("LAC").isNotNull()).and(ds.col("CI").isNotNull()).and(ds.col("LAC").equalTo(cell2gRef.col("LAC2g"))).and(ds.col("CI").equalTo(cell2gRef.col("Cell_Code"))));
-
-        Column protocol_cond = (ds.col("Protocol").equalTo(protocolRef.col("Protocol_ID")));
-        Column protocol_category_cond = (ds.col("Protocol_Category").equalTo(protocolCategoryRef.col("Protocol_Category_ID")));
-        Column tac_cond = (substring(ds.col("IMEI"), 1, 8).equalTo(tacRef.col("TAC_ID")));
-
-        Column sgsn_cond_rat2 = ((ds.col("RAT").equalTo(lit('2'))).and(ds.col("SGSN_User_Plane_IP_Address").equalTo(sgsnRef.col("User_Plane_IP_Address"))));
-        Column ggsn_cond_rat2 = ((ds.col("RAT").equalTo(lit('2'))).and(ds.col("GGSN_User_Plane_IP_Address").equalTo(col("ggsnRef2.User_Plane_IP_Address"))));
-        Column ggsn_cond_rat1 = ((ds.col("RAT").equalTo(lit('1'))).and(ds.col("GGSN_User_Plane_IP_Address").equalTo(col("ggsnRef3.User_Plane_IP_Address"))));
-
-        Column sgw_cond_rat6 = ((ds.col("RAT").equalTo(lit('6'))).and(ds.col("SGSN_User_Plane_IP_Address").equalTo(col("sgwRef.User_Plane_IP_Address"))));
-        Column pgw_cond_rat6 = ((ds.col("RAT").equalTo(lit('6'))).and(ds.col("GGSN_User_Plane_IP_Address").equalTo(col("pgwRef.User_Plane_IP_Address"))));
-
-
+        // Selected columns
         String[] cols = ds.columns();
+        String[] addedCols = {"Application_Name", "Brand", "Model", "Technology", "Type", "OS", "new_City",
+                "new_Province", "new_Region", "new_Country", "new_Cell_Name", "BSC_Name", "SITE_Name", "Latitude",
+                "Longitude", "RNC_Name","NodeB_Name", "new_SGSN", "new_SGSN_POOL",
+                "new_GGSN", "new_SGW", "new_PGW", "Protocol_Name","Protocol_Category_Name",
+                "VENDOR" , "new_AZIMUTH","ENODEB_ID","APN_Edit"};
+        String[] selectedColumns = ArrayUtil.add(cols, addedCols);
 
-        for (String col : new String[]{"new_city", "new_province", "new_region", "new_country", "Protocol_name", "Protocol_Category_name",
-                "TER_BRAND_NAME", "TER_MODEL_NAME", "TER_MODENAME", "TER_TYPE_NAME_EN", "TER_OS_TYPE_NAME", "SGSN", "SGSN_POOL", "full_ggsn", "SGW", "PGW",
-                "eNodeB_Name", "Cell_Name", "RNC_Name", "Service_Area_Name", "NodeB_Name", "BSC_Name", "BTS_Name", "new_Longitude", "new_Latitude"}) {
-            cols = Arrays.copyOf(cols, cols.length + 1);
-            cols[cols.length - 1] = col;
-        }
+        // Aplication conditions
+        Column appCond = ds.col("APP_ID").equalTo(appRef.col("Application_ID"));
+        // Device conditions
+        ds = ds.withColumn("DeviceTAC", when(length(col("IMEI")).lt(8), lpad(col("IMEI"), 8, "0"))
+                        .otherwise(substring(col("IMEI"), 1, 8))
+        );
 
-        ds = ds
-                .join(broadcast(locationRef.as("new_ref3")), location_cond3, "leftouter")
-                .join(broadcast(locationRef.as("new_ref2")), location_cond2, "leftouter")
-                .join(broadcast(refEcgi.as("ref_ecgi")), location_cond1, "leftouter")
-                .join(broadcast(protocolRef), protocol_cond, "leftouter")
-                .join(broadcast(protocolCategoryRef), protocol_category_cond, "leftouter")
-                .join(broadcast(tacRef), tac_cond, "leftouter")
-                .join(broadcast(sgsnRef), sgsn_cond_rat2, "leftouter")
-                .join(broadcast(ggsnRef.as("ggsnRef2")), ggsn_cond_rat2, "leftouter")
-                .join(broadcast(ggsnRef.as("ggsnRef3")), ggsn_cond_rat1, "leftouter")
-                .join(broadcast(sgwRef.as("sgwRef")), sgw_cond_rat6, "leftouter")
-                .join(broadcast(pgwRef.as("pgwRef")), pgw_cond_rat6, "leftouter")
-                .join(broadcast(cell4gRef), cell4g_cond, "leftouter")
-                .join(broadcast(cell3gRef), cell3g_cond, "leftouter")
-                .join(broadcast(cell2gRef), cell2g_cond, "leftouter")
-                .withColumn("new_city", coalesce(col("ref_ecgi.City"), col("new_ref2.City"),col("new_ref3.City")))
-                .withColumn("new_province", coalesce(col("ref_ecgi.Province"), col("new_ref2.Province"), col("new_ref3.Province")))
-                .withColumn("new_region", coalesce(col("ref_ecgi.Region"), col("new_ref2.Region"), col("new_ref3.Region")))
-                .withColumn("new_country", coalesce(col("ref_ecgi.Country"), col("new_ref2.Country"), col("new_ref3.Country")))
-                .withColumn("full_ggsn", coalesce(col("ggsnRef2.GGSN"), col("ggsnRef3.GGSN")))
-                .withColumn("Cell_Name", coalesce(cell4gRef.col("Cell_Name4g"), cell2gRef.col("Cell_Name2g")))
-                .withColumn("new_Longitude", coalesce(cell4gRef.col("Longitude"), cell3gRef.col("Longitude"), cell2gRef.col("Longitude")))
-                .withColumn("new_Latitude", coalesce(cell4gRef.col("Latitude"), cell3gRef.col("Latitude"), cell2gRef.col("Latitude")))
-                .selectExpr(cols)
-                .withColumnRenamed("new_city", "City")
-                .withColumnRenamed("new_province", "Province")
-                .withColumnRenamed("new_region", "Region")
-                .withColumnRenamed("new_country", "Country")
-                .withColumnRenamed("full_ggsn", "GGSN")
-                .withColumnRenamed("new_Longitude", "Longitude")
-                .withColumnRenamed("new_Latitude", "Latitude");
+        Column deviceCond = ds.col("DeviceTAC").equalTo(deviceRef.col("TAC_padded"));
+
+        // Location conditions
+        ds = ds.withColumn("realCID", when(col("RAT").equalTo(1), col("CI").mod(256)))
+                .withColumn("eNodeB_calc", when(col("RAT").equalTo(1), col("CI").divide(256).cast("long")));
+
+        Column cell4gRefCond = ds.col("RAT").equalTo(6)
+                .and( // Normal Join
+                    (ds.col("ECI").substr(0,5).equalTo(hex(location4gRef.col("ENODEB_ID").cast(DataTypes.IntegerType)))
+                    .and(ds.col("ECI").substr(-2,2).equalTo(hex(location4gRef.col("Cell_ID").cast(DataTypes.IntegerType)))))
+                        .or(
+                            ds.col("LAC").isNull().and(ds.col("SAC").isNull()).and(ds.col("CI").isNotNull())
+                                .and(location4gRef.col("Cell_ID").equalTo(ds.col("realCID")))
+                                .and(location4gRef.col("ENODEB_ID").equalTo(ds.col("eNodeB_calc")))
+                            )
+                );
 
 
+        Column cell3gRefCond = ds.col("RAT").equalTo(1)
+                .and( // Normal Join
+                        (location3gRef.col("LAC3g_hex").equalTo(ds.col("LAC"))
+                                .and(location3gRef.col("SAC3g_hex").equalTo(ds.col("SAC"))))
+
+                    // CI based
+                         .or(ds.col("LAC").isNull().and(ds.col("SAC").isNull()).and(ds.col("CI").isNotNull())
+                                 .and(location4gRef.col("Cell_ID").equalTo(ds.col("realCID")))
+                                 .and(location4gRef.col("ENODEB_ID").equalTo(ds.col("eNodeB_calc"))))
+                );
+
+        Column cell2gRefCond = ds.col("RAT").equalTo(2)
+                .and(location2gRef.col("LAC2g_hex").equalTo(ds.col("LAC"))
+                        .and(location2gRef.col("CID_hex").equalTo(ds.col("CI"))));
+
+
+        // NE conditions
+        Column sgsnCondRat2 = ((ds.col("RAT").equalTo(lit(2))).and(ds.col("SGSN_USER_IP").equalTo(col("sgsnRef.User_Plane_IP_Address"))));
+        Column ggsnCondRat2 = ((ds.col("RAT").equalTo(lit(2))).and(ds.col("GGSN_USER_IP").equalTo(col("ggsnRef2.User_Plane_IP_Address"))));
+        Column ggsnCondRat1 = ((ds.col("RAT").equalTo(lit(1))).and(ds.col("GGSN_USER_IP").equalTo(col("ggsnRef3.User_Plane_IP_Address"))));
+        Column sgwCondRat6 = ((ds.col("RAT").equalTo(lit(6))).and(ds.col("SGSN_USER_IP").equalTo(col("sgwRef.ip"))));
+        Column pgwCondRat6 = ((ds.col("RAT").equalTo(lit(6))).and(ds.col("GGSN_USER_IP").equalTo(col("pgwRef.ip"))));
+
+        // protocol conditions
+        Column protocolCond =  ds.col("PROT_TYPE").equalTo(col("protocolRef.Protocol_ID"));
+
+        ds = applyAPNStandardization(ds);
+        Column apnDashboardRefCond = ds.col("APN").equalTo(apnDashboardRef.col("value"));
+
+        ds = ds.join(broadcast(appRef.as("appRef")), appCond, "leftouter")
+                .join(broadcast(deviceRef.as("deviceRef")),deviceCond,"leftouter")
+                .join(broadcast(location4gRef.as("loc4gRef")),cell4gRefCond,"leftouter")
+                .join(broadcast(location3gRef.as("loc3gRef")),cell3gRefCond,"leftouter")
+                .join(broadcast(location2gRef.as("loc2gRef")),cell2gRefCond,"leftouter")
+
+                .join(broadcast(protocolRef.as("protocolRef")), protocolCond,"leftouter")
+                .join(broadcast(sgsnRef.as("sgsnRef")), sgsnCondRat2, "leftouter")
+                .join(broadcast(ggsnRef.as("ggsnRef2")), ggsnCondRat2, "leftouter")
+                .join(broadcast(ggsnRef.as("ggsnRef3")), ggsnCondRat1, "leftouter")
+                .join(broadcast(sgwRef.as("sgwRef")), sgwCondRat6, "leftouter")
+                .join(broadcast(pgwRef.as("pgwRef")), pgwCondRat6, "leftouter")
+
+                .join(broadcast(apnDashboardRef.as("apnDashboardRef")), apnDashboardRefCond, "leftouter")
+
+                //App
+                .withColumn("Application_Name", coalesce(appRef.col("Application_Name"), lit("Unknown")))
+                // Device
+                .withColumn("Brand" , coalesce(deviceRef.col("TER_BRAND_NAME") , lit("Unknown")))
+                .withColumn("Model",coalesce(deviceRef.col("TER_MODEL_NAME"), lit("Unknown")))
+                .withColumn("Technology",coalesce(deviceRef.col("TER_MODENAME"), lit("Unknown")))
+                .withColumn("Type",coalesce(deviceRef.col("TER_TYPE_NAME_EN"), lit("Unknown")))
+                .withColumn("OS",coalesce(deviceRef.col("TER_OS_TYPE_NAME"), lit("Unknown")))
+
+                // Location
+                .withColumn("new_City",coalesce(location2gRef.col("City"),location3gRef.col("City"),location4gRef.col("City")))
+                .withColumn("new_Province", coalesce(location2gRef.col("Province"),location3gRef.col("Province"),location4gRef.col("Province")))
+                .withColumn("new_Region",coalesce(location2gRef.col("region"),location3gRef.col("region"),location4gRef.col("region")))
+                .withColumn("new_Country",coalesce(location2gRef.col("country"),location3gRef.col("country"),location4gRef.col("country")))
+                .withColumn("new_Cell_Name",coalesce(location2gRef.col("Cell_Name"),location4gRef.col("Cell_Name")))
+                .withColumn("Latitude",coalesce(location2gRef.col("LAT"),location3gRef.col("LAT"),location4gRef.col("LAT")).cast(DataTypes.DoubleType))
+                .withColumn("Longitude",coalesce(location2gRef.col("LNG"),location3gRef.col("LNG"),location4gRef.col("LNG")).cast(DataTypes.DoubleType))
+                .withColumn("new_AZIMUTH" ,coalesce(location2gRef.col("AZIMUTH"),location3gRef.col("AZIMUTH"),location4gRef.col("AZIMUTH")))
+                .withColumn("BSC_Name",location2gRef.col("BSC"))
+                .withColumn("SITE_Name",location2gRef.col("SITE_Name"))
+                .withColumn("RNC_Name",location3gRef.col("RNC"))
+                .withColumn("NodeB_Name",location3gRef.col("NODEB_LABEL"))
+                // .withColumn("ENodeB_Name",location4gRef.col("ENODEB_Name"))
+
+                // APN
+                .withColumn("APN_Edit",
+                        coalesce(when(apnDashboardRef.col("value").isNotNull(), ds.col("APN"))
+                                .otherwise(lit("Unknown")), lit("Unknown"))
+                )
+
+                // NE
+                .withColumn("new_SGSN" ,sgsnRef.col("SGSN"))
+                .withColumn("new_SGSN_POOL" ,sgsnRef.col("SGSN_POOL"))
+                .withColumn("new_GGSN" , coalesce(col("ggsnRef2.GGSN"),col("ggsnRef3.GGSN")))
+                .withColumn("new_SGW" ,col("sgwRef.SGW"))
+                .withColumn("new_PGW" ,col("pgwRef.PGW"))
+
+                // Protocol
+                .withColumn("Protocol_Name" , coalesce(col("protocolRef.Protocol_Name") , lit("Unknown")))
+                .withColumn("Protocol_Category_Name" , lit("Other"))
+
+                .selectExpr(selectedColumns)
+                .withColumnRenamed("new_City","City")
+                .withColumnRenamed("new_Province","Province")
+                .withColumnRenamed("new_Region","Region")
+                .withColumnRenamed("new_Country","Country")
+                .withColumnRenamed("new_Cell_Name","CELL_Name")
+                .withColumnRenamed("new_AZIMUTH" ,"AZIMUTH")
+                .withColumnRenamed("new_SGSN","SGSN")
+                .withColumnRenamed("new_SGSN_POOL","SGSN_POOL")
+                .withColumnRenamed("new_GGSN","GGSN")
+                .withColumnRenamed("new_SGW","SGW")
+                .withColumnRenamed("new_PGW","PGW");
+
+
+        // Unknown conditions (Geograpgic columns & APN)
+        ds = ds.withColumn("APN", coalesce(col("APN"), lit("Unknown")))
+                .withColumn("City", coalesce(col("City"), lit("Unknown")))
+                .withColumn("Province", coalesce(col("Province"), lit("Unknown")))
+                .withColumn("Region", coalesce(col("Region"), lit("Unknown")))
+                .withColumn("Country", coalesce(col("Country"), lit("Unknown")));
+
+        // RAT Unknown condition
+        ds = ds.withColumn("ENODEB_ID", when(col("RAT").equalTo(6), coalesce(col("ENODEB_ID"), lit("Unknown"))).when(col("RAT").isNull(), lit("Unknown")))
+                .withColumn("RNC_Name", when(col("RAT").equalTo(1), coalesce(col("RNC_Name"), lit("Unknown"))))
+                .withColumn("BSC_Name", when(col("RAT").equalTo(2), coalesce(col("BSC_Name"), lit("Unknown"))));
+
+        ds.printSchema();
         return ds;
     }
 
@@ -153,4 +258,83 @@ public class StreamingSourcing extends Sourcing {
         return dw;
     }
 
+    private Dataset<Row> applyAPNStandardization(Dataset<Row> ds){
+        Column cleanAPN = col("APN");
+        // remove control chars
+        cleanAPN = regexp_replace(cleanAPN,
+                "[\\x00-\\x1F\\x7F-\\x9F]", "");
+        // remove unwanted patterns
+        String[] patterns = {
+                "MNC\\d{2,3}",
+                "MCC\\d{2,3}",
+                "GPRS[\\?O]?",
+                "\\d{2,3}",
+                "IPV[46]",
+                "INTERNET",
+                "V\\d+(\\.\\d+)?"
+        };
+
+        for (String p : patterns) {
+            cleanAPN = regexp_replace(cleanAPN, "(?i)" + p, " ");
+        }
+        // replace special chars with dot
+        cleanAPN = regexp_replace(cleanAPN,
+                "[@،;:|/\\\\$#&*()\\[\\]{}~`\\-_+=><]", ".");
+
+        // replace non-alphanumeric except dot
+        cleanAPN = regexp_replace(cleanAPN,
+                "[^a-zA-Z0-9\\.]", ".");
+
+        // lowercase
+        cleanAPN = lower(cleanAPN);
+// Normalize whitespace first (important!)
+        cleanAPN = regexp_replace(cleanAPN, "\\s+", " ");
+        cleanAPN = trim(cleanAPN);
+
+// Convert spaces to dots
+        cleanAPN = regexp_replace(cleanAPN, " ", ".");
+        // collapse multiple dots
+        cleanAPN = regexp_replace(cleanAPN, "\\.+", ".");
+
+        // trim dots
+        cleanAPN = regexp_replace(cleanAPN, "^\\.|\\.$", "");
+        Column parts = split(cleanAPN, "\\.");
+
+
+        // remove single-character segments
+        Column filteredParts = expr(
+                "filter(" +
+                        "split(" + cleanAPN.expr().sql() + ", '\\\\.'), " +
+                        "x -> length(x) > 1" +
+                        ")"
+        );
+
+        // 1️⃣0️⃣ Rebuild APN
+        Column rebuilt = concat_ws(".", filteredParts);
+
+        // 1️⃣1️⃣ Remove duplicate suffixes (.mci.mci → .mci)
+        rebuilt = regexp_replace(rebuilt, "(\\.mci)+", ".mci");
+        rebuilt = regexp_replace(rebuilt, "(\\.irancell)+", ".irancell");
+
+        ds = ds.withColumn("APN", rebuilt);
+
+        // =========================
+        // Extract APN Group
+        // =========================
+        //   ds.show(100);
+        //   String domainsRegex = "^(mci|irancell|mtn|rightel|tci|tat|ir|com|net|org)$";
+
+//        Column apnGroup =
+//                element_at(
+//                        expr("filter(split(clean_APN,'\\\\.'), x -> NOT x RLIKE '" + domainsRegex + "')"),
+//                        1
+//                );
+//
+//        ds = ds.withColumn("apn_group",
+//                when(apnGroup.isNotNull(), apnGroup)
+//                        .otherwise(element_at(split(col("clean_APN"), "\\."), 1))
+        // );
+
+        return ds;
+    }
 }
