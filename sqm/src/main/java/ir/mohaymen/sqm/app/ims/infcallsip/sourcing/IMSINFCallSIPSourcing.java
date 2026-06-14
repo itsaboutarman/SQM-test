@@ -20,11 +20,14 @@ public class IMSINFCallSIPSourcing extends Sourcing {
     }
     @Override
     protected Dataset<Row> extractColumns(Dataset<Row> ds) {
-        return FormatConverter.fromCSV(ds,Schema.getSchema(),"|");
+        return ds;
     }
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {
         Dataset<Row> neRef = references.get("neRef");
+        Dataset<Row> deviceRef = references.get("deviceRef");
+        Dataset<Row> locationRef = references.get("locationRef");
+        Dataset<Row> location2g3gRef = references.get("2g3gLocationRef");
 
         // NE Information
         neRef = neRef.select("IP", "Entity_Name");
@@ -46,25 +49,45 @@ public class IMSINFCallSIPSourcing extends Sourcing {
         neRef3.persist();
 
         // Device Information
-        Dataset<Row> deviceRef = references.get("deviceRef");
-        deviceRef = deviceRef.select("TAC","TER_BRAND_NAME","TER_MODEL_NAME","TER_MODENAME", "TER_TYPE_NAME_EN", "TER_OS_TYPE_NAME")
-                .withColumn("TAC_Padded" , lpad(col("TAC") ,8 ,"0"))
+        deviceRef = deviceRef.select("TAC", "TER_BRAND_NAME", "TER_MODEL_NAME" ,"TER_MODENAME",
+                        "TER_TYPE_NAME_EN", "TER_OS_TYPE_NAME")
+                .withColumn("TAC_Padded", lpad(col("TAC"), 8 ,"0"))
                 .withColumnRenamed("TAC" ,"DeviceTAC");
 
         deviceRef.persist();
 
         // Location Information
-        Dataset<Row> locationRef = references.get("locationRef");
-        locationRef = locationRef.withColumnRenamed("TAI" ,"locationTAI");
-        locationRef = locationRef.drop("ENODeBID").drop("CID");
+        locationRef = locationRef.withColumnRenamed("TAI", "locationTAI");
+        locationRef = locationRef.drop("ENODeBID")
+                .drop("CID")
+                .withColumnRenamed("Country", "CountryName");
         locationRef.persist();
 
-        ds = ds.withColumn("CallTAC" , lpad(replace(col("IMEI"),lit("-") ,lit("")) ,8 ,"0"));
+        location2g3gRef = location2g3gRef.withColumnRenamed("Country", "CountryName");
+        location2g3gRef.persist();
 
+        ds = ds.withColumn("CallTAC" , lpad(replace(col("IMEI"),lit("-"), lit("")), 8, "0"));
+
+        // --------------- column conditions ---------------
         Column deviceCond = col("deviceRef.TAC_Padded").equalTo(col("call.CallTAC"));
-        Column locationCond = ds.col("Access_Location_Info").isNotNull()
+
+        Column location4gCond = ds.col("Access_Type").isin(1, 2, 43)
+                .and(col("Access_Location_Info").isNotNull())
                 .and(upper(ds.col("Access_Location_Info")).equalTo(upper(col("locationRef.AccessLocationInfo"))))
                 .and(upper(ds.col("TAI")).equalTo(upper(col("locationRef.locationTAI"))));
+
+        Column baseCondition = col("Access_Type").isin(3, 4, 5, 44);
+        ds = ds.withColumn("MCC", when(baseCondition, substring(col("Access_Location_Info"), 1, 3)))
+                .withColumn("MNC", when(baseCondition, substring(col("Access_Location_Info"), 4, 2)))
+                .withColumn("LAC", when(baseCondition, substring(col("Access_Location_Info"), 6, 4)))
+                .withColumn("SAC_CC", when(baseCondition, substring(col("Access_Location_Info"), 10, 4)));
+
+        Column location2g3gCond = ds.col("Access_Type").isin(3, 4, 5, 44)
+                .and((ds.col("MCC")).equalTo(col("loc_2g_3g_ref.MCC")))
+                .and((ds.col("MNC")).equalTo(col("loc_2g_3g_ref.MNC")))
+                .and((ds.col("LAC")).equalTo(col("loc_2g_3g_ref.LAC")))
+                .and((ds.col("SAC_CC")).equalTo(col("loc_2g_3g_ref.SAC_CC")));
+
 
         Column neCond1 = ds.col("Source_NE_IP_Address").equalTo(col("ne_ref1.IP_ref1"));
         Column neCond2 = ds.col("Destination_NE_IP_Address").equalTo(col("ne_ref2.IP_ref2"));
@@ -79,8 +102,9 @@ public class IMSINFCallSIPSourcing extends Sourcing {
                 //.dropDuplicates("Session_id", "RECORD_DATE", "Start_Time_ms", "IMEI");
 
         ds = ds.alias("call")
-                .join(broadcast(deviceRef).alias("deviceRef") , deviceCond , "leftouter")
-                .join(broadcast(locationRef).alias("locationRef") ,locationCond , "leftouter")
+                .join(broadcast(deviceRef).alias("deviceRef"), deviceCond, "leftouter")
+                .join(broadcast(locationRef).alias("locationRef"), location4gCond, "leftouter")
+                .join(broadcast(location2g3gRef.as("loc_2g_3g_ref")), location2g3gCond, "leftouter")
                 .join(broadcast(neRef1.as("ne_ref1")), neCond1, "leftouter")
                 .join(broadcast(neRef2.as("ne_ref2")), neCond2, "leftouter")
                 .join(broadcast(neRef3.as("ne_ref3")), neCond3, "leftouter")
@@ -94,7 +118,7 @@ public class IMSINFCallSIPSourcing extends Sourcing {
                 .withColumn("Technology",coalesce(deviceRef.col("TER_MODENAME"), lit("Unknown")))
                 .withColumn("Type",coalesce(deviceRef.col("TER_TYPE_NAME_EN"), lit("Unknown")))
                 .withColumn("OS",coalesce(deviceRef.col("TER_OS_TYPE_NAME"), lit("Unknown")))
-                .withColumn("Country",locationRef.col("Country"))
+                .withColumn("Country", coalesce(locationRef.col("CountryName"), location2g3gRef.col("CountryName")))
                 .withColumn("RegionName",locationRef.col("Region"))
                 .withColumn("ProvinceName",locationRef.col("Province"))
                 .withColumn("CityName",locationRef.col("City"))
@@ -116,7 +140,12 @@ public class IMSINFCallSIPSourcing extends Sourcing {
                 .drop("IP_ref3")
                 .drop("Region")
                 .drop("City")
-                .drop("Province");
+                .drop("CountryName")
+                .drop("Province")
+                .drop("MCC")
+                .drop("MNC")
+                .drop("LAC")
+                .drop("SAC_CC");
 
         return ds;
     }

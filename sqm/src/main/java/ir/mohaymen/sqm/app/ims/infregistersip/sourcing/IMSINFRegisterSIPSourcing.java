@@ -60,6 +60,7 @@ public class IMSINFRegisterSIPSourcing extends Sourcing {
                 .withColumn("TAC_padded", lpad(deviceRef.col("TAC"), 8, "0"))
                 .drop("TAC");
         deviceRef.persist();
+
         locationRef = locationRef.withColumn("CID" , col("CID").cast(DataTypes.StringType));
         locationRef = locationRef.withColumn("ENODBID" , col("ENODeBID").cast(DataTypes.StringType));
         locationRef = locationRef.drop("ENODeBID");
@@ -126,7 +127,7 @@ public class IMSINFRegisterSIPSourcing extends Sourcing {
                 .withColumn("RegionName", coalesce(locationRef.col("Region"), location2g3gRef.col("Region")))
                 .withColumn("ProvinceName", coalesce(locationRef.col("Province"), location2g3gRef.col("Province")))
                 .withColumn("CityName", coalesce(locationRef.col("City"), location2g3gRef.col("City")))
-                .withColumn("Coutry", coalesce(locationRef.col("CountryName"), location2g3gRef.col("CountryName")))
+                .withColumn("Country", coalesce(locationRef.col("CountryName"), location2g3gRef.col("CountryName")))
                 .withColumn("Insert_Time", current_timestamp());
 
         ds = ds.drop("TER_BRAND_NAME")
