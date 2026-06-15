@@ -135,6 +135,7 @@ public class Schema extends ir.mohaymen.sqm.app.Schema {
                 .add("UPDATE_Delay_for_Early_Media", DataTypes.LongType, true)
                 .add("UPDATE_200_OK_Delay", DataTypes.LongType, true)
                 .add("Uplink_Traffic_Bytes", DataTypes.LongType, true)
+                .add("Downlink_Traffic_Bytes", DataTypes.LongType, true)
                 .add("CALLER_HOME_CC", DataTypes.StringType, true)
                 .add("CALLER_HOME_OPRID", DataTypes.LongType, true)
                 .add("CALLED_HOME_CC", DataTypes.StringType, true)
