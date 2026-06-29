@@ -72,6 +72,12 @@ public class StreamingSourcing extends Sourcing {
                 .withColumnRenamed("CID", "CID2g")
                 .withColumn("LAC2g_hex", hex(col("LAC2g").cast(DataTypes.IntegerType)))
                 .withColumn("CID_hex", hex(col("CID2g").cast(DataTypes.IntegerType)));
+
+        Dataset<Row> location4gRef2 = location4gRef.as("loc4gRef2");
+        Dataset<Row> location4gRef3 = location4gRef.as("loc4gRef3");
+
+        location4gRef2.persist();
+        location4gRef3.persist();
         location4gRef.persist();
         location3gRef.persist();
         location2gRef.persist();
@@ -128,24 +134,23 @@ public class StreamingSourcing extends Sourcing {
                 .and( // Normal Join
                     (ds.col("ECI").substr(0,5).equalTo(hex(location4gRef.col("ENODEB_ID").cast(DataTypes.IntegerType)))
                     .and(ds.col("ECI").substr(-2,2).equalTo(hex(location4gRef.col("Cell_ID").cast(DataTypes.IntegerType)))))
-                        .or(
-                            ds.col("LAC").isNull().and(ds.col("SAC").isNull()).and(ds.col("CI").isNotNull())
-                                .and(location4gRef.col("Cell_ID").equalTo(ds.col("realCID")))
-                                .and(location4gRef.col("ENODEB_ID").equalTo(ds.col("eNodeB_calc")))
-                            )
                 );
 
+        Column cell4gRefCond2 = ds.col("RAT").equalTo(6).and(
+                ds.col("LAC").isNull().and(ds.col("SAC").isNull()).and(ds.col("CI").isNotNull())
+                .and(location4gRef2.col("Cell_ID").equalTo(ds.col("realCID")))
+                .and(location4gRef2.col("ENODEB_ID").equalTo(ds.col("eNodeB_calc"))));
 
         Column cell3gRefCond = ds.col("RAT").equalTo(1)
                 .and( // Normal Join
                         (location3gRef.col("LAC3g_hex").equalTo(ds.col("LAC"))
                                 .and(location3gRef.col("SAC3g_hex").equalTo(ds.col("SAC"))))
-
-                    // CI based
-                         .or(ds.col("LAC").isNull().and(ds.col("SAC").isNull()).and(ds.col("CI").isNotNull())
-                                 .and(location4gRef.col("Cell_ID").equalTo(ds.col("realCID")))
-                                 .and(location4gRef.col("ENODEB_ID").equalTo(ds.col("eNodeB_calc"))))
                 );
+
+        Column cell4gRefCond3 = ds.col("RAT").equalTo(1)
+                .and(ds.col("LAC").isNull().and(ds.col("SAC").isNull()).and(ds.col("CI").isNotNull())
+                .and(location4gRef3.col("Cell_ID").equalTo(ds.col("realCID")))
+                .and(location4gRef3.col("ENODEB_ID").equalTo(ds.col("eNodeB_calc"))));
 
         Column cell2gRefCond = ds.col("RAT").equalTo(2)
                 .and(location2gRef.col("LAC2g_hex").equalTo(ds.col("LAC"))
@@ -168,9 +173,10 @@ public class StreamingSourcing extends Sourcing {
         ds = ds.join(broadcast(appRef.as("appRef")), appCond, "leftouter")
                 .join(broadcast(deviceRef.as("deviceRef")),deviceCond,"leftouter")
                 .join(broadcast(location4gRef.as("loc4gRef")),cell4gRefCond,"leftouter")
+                .join(broadcast(location4gRef2.as("loc4gRef2")),cell4gRefCond2,"leftouter")
+                .join(broadcast(location4gRef3.as("loc4gRef3")),cell4gRefCond3,"leftouter")
                 .join(broadcast(location3gRef.as("loc3gRef")),cell3gRefCond,"leftouter")
                 .join(broadcast(location2gRef.as("loc2gRef")),cell2gRefCond,"leftouter")
-
                 .join(broadcast(protocolRef.as("protocolRef")), protocolCond,"leftouter")
                 .join(broadcast(sgsnRef.as("sgsnRef")), sgsnCondRat2, "leftouter")
                 .join(broadcast(ggsnRef.as("ggsnRef2")), ggsnCondRat2, "leftouter")
@@ -190,18 +196,19 @@ public class StreamingSourcing extends Sourcing {
                 .withColumn("OS",coalesce(deviceRef.col("TER_OS_TYPE_NAME"), lit("Unknown")))
 
                 // Location
-                .withColumn("new_City",coalesce(location2gRef.col("City"),location3gRef.col("City"),location4gRef.col("City")))
-                .withColumn("new_Province", coalesce(location2gRef.col("Province"),location3gRef.col("Province"),location4gRef.col("Province")))
-                .withColumn("new_Region",coalesce(location2gRef.col("region"),location3gRef.col("region"),location4gRef.col("region")))
-                .withColumn("new_Country",coalesce(location2gRef.col("country"),location3gRef.col("country"),location4gRef.col("country")))
-                .withColumn("new_Cell_Name",coalesce(location2gRef.col("Cell_Name"),location4gRef.col("Cell_Name")))
-                .withColumn("Latitude",coalesce(location2gRef.col("LAT"),location3gRef.col("LAT"),location4gRef.col("LAT")).cast(DataTypes.DoubleType))
-                .withColumn("Longitude",coalesce(location2gRef.col("LNG"),location3gRef.col("LNG"),location4gRef.col("LNG")).cast(DataTypes.DoubleType))
-                .withColumn("new_AZIMUTH" ,coalesce(location2gRef.col("AZIMUTH"),location3gRef.col("AZIMUTH"),location4gRef.col("AZIMUTH")))
+                .withColumn("new_City",coalesce(location2gRef.col("City"),location3gRef.col("City"),location4gRef.col("City"),location4gRef2.col("City"),location4gRef3.col("City")))
+                .withColumn("new_Province", coalesce(location2gRef.col("Province"),location3gRef.col("Province"),location4gRef.col("Province"),location4gRef2.col("Province"),location4gRef3.col("Province")))
+                .withColumn("new_Region",coalesce(location2gRef.col("region"),location3gRef.col("region"),location4gRef3.col("region"),location4gRef2.col("region"),location4gRef.col("region")))
+                .withColumn("new_Country",coalesce(location2gRef.col("country"),location3gRef.col("country"),location4gRef.col("country"),location4gRef3.col("country"),location4gRef2.col("country")))
+                .withColumn("new_Cell_Name",coalesce(location2gRef.col("Cell_Name"),location4gRef.col("Cell_Name"),location4gRef2.col("Cell_Name"),location4gRef3.col("Cell_Name")))
+                .withColumn("Latitude",coalesce(location2gRef.col("LAT"),location3gRef.col("LAT"),location4gRef.col("LAT"),location4gRef3.col("LAT"),location4gRef2.col("LAT")).cast(DataTypes.DoubleType))
+                .withColumn("Longitude",coalesce(location2gRef.col("LNG"),location3gRef.col("LNG"),location4gRef.col("LNG"),location4gRef3.col("LNG"),location4gRef2.col("LNG")).cast(DataTypes.DoubleType))
+                .withColumn("new_AZIMUTH" ,coalesce(location2gRef.col("AZIMUTH"),location3gRef.col("AZIMUTH"),location4gRef.col("AZIMUTH"),location4gRef2.col("AZIMUTH"),location4gRef3.col("AZIMUTH")))
                 .withColumn("BSC_Name",location2gRef.col("BSC"))
                 .withColumn("SITE_Name",location2gRef.col("SITE_Name"))
                 .withColumn("RNC_Name",location3gRef.col("RNC"))
                 .withColumn("NodeB_Name",location3gRef.col("NODEB_LABEL"))
+                .withColumn("ENODEB_ID",coalesce(location4gRef.col("ENODEB_ID"),location4gRef2.col("ENODEB_ID"),location4gRef3.col("ENODEB_ID")))
                 // .withColumn("ENodeB_Name",location4gRef.col("ENODEB_Name"))
 
                 // APN
@@ -219,7 +226,7 @@ public class StreamingSourcing extends Sourcing {
 
                 // Protocol
                 .withColumn("Protocol_Name" , coalesce(col("protocolRef.Protocol_Name") , lit("Unknown")))
-                .withColumn("Protocol_Category_Name" , lit("Other"))
+                .withColumn("Protocol_Category_Name" , lit("Streaming"))
 
                 .selectExpr(selectedColumns)
                 .withColumnRenamed("new_City","City")
