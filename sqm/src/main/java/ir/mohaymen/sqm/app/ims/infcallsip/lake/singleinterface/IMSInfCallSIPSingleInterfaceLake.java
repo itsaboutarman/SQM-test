@@ -35,8 +35,8 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 "Calling_Address_in_TEL_URI_Format", "Calling_Party_Identity",
                 "Called_Party_Address_in_TEL_URI_Format", "Called_Party_Identity",
                 "Dialing_Number_in_TEL_URI_Format", "Peer_Access_Type", "Peer_Access_Location_Info",
-                "First_Release_NE_Name", "Release_Cause_Code", "Warning_Code",
-                "Reason_Protocol", "Reason_Code",
+                "First_Release_NE_Name", "Release_Cause_Code", "Abnormal_Release_Information",
+                "Reason_Protocol", "Reason_Code", "Abnormal_Release_Cause",
                 "Abnormal_Play_Tone_Protocol", "Abnormal_Play_Tone_Cause_Code",
                 "ReTransMsgType", "RetransMsgTimeOffset_ms", "CS_Retry_Triggering_Message",
                 "Time_Difference_Between_the_INVITE_and_480_ResponseCancel_Messages",
@@ -45,7 +45,8 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 "UPDATE_Delay_for_Early_Media", "UPDATE_200_OK_Delay",
                 "UE_Handover_Capability_Flag", "IWF_Handover_Capability_Flag",
                 "Visited_Network_Domain", "Area_Code", "TAI", "Redirected_Times",
-                "Call_Forwarding_Reason", "Call_Redirection_Number", "Original_Called_Party_Address", 
+                "Call_Forwarding_Reason", "Redirection_Address",
+                "Call_Redirection_Number", "Original_Called_Party_Address",
                 "Conference_URI", "User_Type_in_Conference", "call_hold",
                 "Calling_Audio_SDP_IP_Address", "Calling_Audio_SDP_Port",
                 "Calling_Video_SDP_IP_Address", "Calling_Video_SDP_Port",
@@ -68,8 +69,6 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
         ds = ds.withColumn("Start_Time" ,to_timestamp(from_unixtime(col("Start_Time_s").plus(col("Start_Time_ms").divide(1000))), "yyyy-MM-dd HH:mm:ss"))
                 .withColumn("End_Time" , to_timestamp(from_unixtime(col("Start_Time_s").plus(col("Start_Time_ms").divide(1000)).plus(col("End_Time_ms").divide(1000))), "yyyy-MM-dd HH:mm:ss"))
                 .withColumn("Peer_Access_Location_Info_Name", lit(null).cast(DataTypes.StringType))
-                .withColumn("Reason_Text", lit(null).cast(DataTypes.StringType))
-                .withColumn("P_Early_Media_Type_in_183_or_Update", lit(null).cast(DataTypes.StringType))
                 .withColumn("Original_Called_Party_IMSI", lit(null).cast(DataTypes.StringType));
 
         ds = ds.withColumnRenamed("Session_id","Session_ID")
@@ -94,7 +93,8 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 .withColumnRenamed("Calling_Address_in_TEL_URI_Format", "Calling_Party_Address")
                 .withColumnRenamed("Called_Party_Address_in_TEL_URI_Format", "Called_Party_Address")
                 .withColumnRenamed("Dialing_Number_in_TEL_URI_Format", "Dialing_Number")
-                .withColumnRenamed("Warning_Code", "Warning_Text")
+                .withColumnRenamed("Abnormal_Release_Information", "Warning_Text")
+                .withColumnRenamed("Abnormal_Release_Cause", "Reason_Text")
                 .withColumnRenamed("ReTransMsgType", "Retrans_Message_Type")
                 .withColumnRenamed("RetransMsgTimeOffset_ms", "Retrans_Message_Time_ms")
                 .withColumnRenamed("Time_Difference_Between_the_INVITE_and_480_ResponseCancel_Messages", "CS_Retry_Triggering_Delay_ms")
@@ -106,20 +106,25 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 .withColumnRenamed("UPDATE_Delay_for_Early_Media", "UPDATE_Delay_for_Early_Media_ms")
                 .withColumnRenamed("UPDATE_200_OK_Delay", "UPDATE_200_OK_Delay_for_Early_Media_ms")
                 .withColumnRenamed("IWF_Handover_Capability_Flag", "IWF_SRVCC_Capability_Flag")
-                .withColumnRenamed("Call_Redirection_Number", "Call_Forward_Address")
+                .withColumnRenamed("Redirection_Address", "Call_Forward_Address")
                 .withColumnRenamed("User_Type_in_Conference", "Conference_User_Type")
                 .withColumnRenamed("Calling_Audio_SDP_IP_Address", "Calling_Audio_SDP_IP")
                 .withColumnRenamed("Calling_Video_SDP_IP_Address", "Calling_Video_SDP_IP")
                 .withColumnRenamed("Called_Audio_SDP1_IP_Address", "Called_Audio_SDP_IP")
                 .withColumnRenamed("Called_Audio_SDP1_Port", "Called_Audio_SDP_Port")
                 .withColumnRenamed("Called_Video_SDP_IP_Address", "Called_Video_SDP_IP")
-                .withColumnRenamed("180_Early_Media_Type", "P_Early_Media_Type_in_180_Message")
-                
+
+                .withColumnRenamed("TEL_URI_Dialing_Number_Type", "TEL_URI_Dialing_Number_Type_source")
+                .withColumnRenamed("TEL_URI_Calling_Address_Type", "TEL_URI_Calling_Address_Type_source")
+                .withColumnRenamed("TEL_URI_Called_Party_Address_Type", "TEL_URI_Called_Party_Address_Type_source")
+                .withColumnRenamed("Q_850_Failure_Cause_Code", "Q_850_Failure_Cause_Code_source")
                 .withColumnRenamed("First_Failure_NE_Type", "First_Failure_NE_Type_source")
+                .withColumnRenamed("180_Early_Media_Type", "P_Early_Media_Type_in_183_or_Update_source")
                 .withColumnRenamed("UPDATE_200_OK_Result_for_RBT", "Update_200_OK_Result_for_RBT_source")
                 .withColumnRenamed("Video_RBT_Capacity", "Calling_UE_Video_RBT_Capacity_source")
                 .withColumnRenamed("Call_Waiting_Flag", "Call_Waiting_Flag_source")
                 .withColumnRenamed("call_hold", "Call_Hold_Flag_source")
+                .withColumnRenamed("Call_Forwarding_Reason", "Call_Forwarding_Reason_source")
                 .withColumnRenamed("UE_Handover_Capability_Flag", "UE_SRVCC_Capability_Flag_source")
                 .withColumnRenamed("CS_Retry_Triggering_Message", "CS_Retry_Triggering_Message_source")
                 .withColumnRenamed("Abnormal_Play_Tone_Protocol", "Abnormal_Play_Tone_Protocol_source")
@@ -202,6 +207,10 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 .withColumnRenamed("Key","ueSRVCCCapabilityFlagKey")
                 .withColumnRenamed("Value","UE_SRVCC_Capability_Flag");
         ueSRVCCCapabilityFlag.persist();
+        Dataset<Row> callForwardingReason = references.get("callForwardingReason")
+                .withColumnRenamed("Key","CallForwardingReasonKey")
+                .withColumnRenamed("Value","Call_Forwarding_Reason");
+        callForwardingReason.persist();
         Dataset<Row> callHoldFlag = references.get("callHoldFlag")
                 .withColumnRenamed("Key","callHoldFlagKey")
                 .withColumnRenamed("Value","Call_Hold_Flag");
@@ -218,10 +227,30 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 .withColumnRenamed("Key","update200OKResultForRBTKey")
                 .withColumnRenamed("Value","Update_200_OK_Result_for_RBT");
         update200OKResultForRBT.persist();
+        Dataset<Row> pEarlyMediaTypeIn183orUpdate = references.get("pEarlyMediaTypeIn183orUpdate")
+                .withColumnRenamed("Key","PEarlyMediaTypeIn183orUpdateKey")
+                .withColumnRenamed("Value","P_Early_Media_Type_in_183_or_Update");
+        pEarlyMediaTypeIn183orUpdate.persist();
         Dataset<Row> firstFailureNEType = references.get("firstFailureNEType")
                 .withColumnRenamed("Key","firstFailureNETypeKey")
                 .withColumnRenamed("Value","First_Failure_NE_Type");
-        firstFailureNEType.persist();       
+        firstFailureNEType.persist();
+        Dataset<Row> q850FailureCauseCode = references.get("q850FailureCauseCode")
+                .withColumnRenamed("Key","Q850FailureCauseCodeKey")
+                .withColumnRenamed("Value","Q_850_Failure_Cause_Code");
+        q850FailureCauseCode.persist();
+        Dataset<Row> TELURICalledPartyAddressType = references.get("TEL_URI_Address_Type")
+                .withColumnRenamed("Key","TELURICalledPartyAddressTypeKey")
+                .withColumnRenamed("Value","TEL_URI_Called_Party_Address_Type");
+        TELURICalledPartyAddressType.persist();
+        Dataset<Row> TELURICallingAddressType = references.get("TEL_URI_Address_Type")
+                .withColumnRenamed("Key","TELURICallingAddressTypeKey")
+                .withColumnRenamed("Value","TEL_URI_Calling_Address_Type");
+        TELURICallingAddressType.persist();
+        Dataset<Row> TELURIDialingNumberType = references.get("TEL_URI_Address_Type")
+                .withColumnRenamed("Key","TELURIDialingNumberTypeKey")
+                .withColumnRenamed("Value","TEL_URI_Dialing_Number_Type");
+        TELURIDialingNumberType.persist();
 
         ds =  ds.join(broadcast(accessType) , ds.col("Access_Type_source").equalTo(accessType.col("AccessTypeKey")) , "leftouter")
                 .join(broadcast(userType) , ds.col("User_Type_source").equalTo(userType.col("userTypeKey")), "leftouter")
@@ -239,11 +268,17 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 .join(broadcast(abnormalPlayToneProtocol) , ds.col("Abnormal_Play_Tone_Protocol_source").equalTo(abnormalPlayToneProtocol.col("abnormalPlayToneProtocolKey")), "leftouter")
                 .join(broadcast(csRetryTriggeringMessage) , ds.col("CS_Retry_Triggering_Message_source").equalTo(csRetryTriggeringMessage.col("csRetryTriggeringMessageKey")), "leftouter")
                 .join(broadcast(ueSRVCCCapabilityFlag) , ds.col("UE_SRVCC_Capability_Flag_source").equalTo(ueSRVCCCapabilityFlag.col("ueSRVCCCapabilityFlagKey")), "leftouter")
+                .join(broadcast(callForwardingReason) , ds.col("Call_Forwarding_Reason_source").equalTo(callForwardingReason.col("CallForwardingReasonKey")), "leftouter")
                 .join(broadcast(callHoldFlag) , ds.col("Call_Hold_Flag_source").equalTo(callHoldFlag.col("callHoldFlagKey")), "leftouter")
                 .join(broadcast(callWaitingFlag) , ds.col("Call_Waiting_Flag_source").equalTo(callWaitingFlag.col("callWaitingFlagKey")), "leftouter")
                 .join(broadcast(callingUEVideoRBTCapacity) , ds.col("Calling_UE_Video_RBT_Capacity_source").equalTo(callingUEVideoRBTCapacity.col("callingUEVideoRBTCapacityKey")), "leftouter")
                 .join(broadcast(update200OKResultForRBT) , ds.col("Update_200_OK_Result_for_RBT_source").equalTo(update200OKResultForRBT.col("update200OKResultForRBTKey")), "leftouter")
-                .join(broadcast(firstFailureNEType) , ds.col("First_Failure_NE_Type_source").equalTo(firstFailureNEType.col("firstFailureNETypeKey")), "leftouter");
+                .join(broadcast(pEarlyMediaTypeIn183orUpdate) , ds.col("P_Early_Media_Type_in_183_or_Update_source").equalTo(pEarlyMediaTypeIn183orUpdate.col("PEarlyMediaTypeIn183orUpdateKey")), "leftouter")
+                .join(broadcast(firstFailureNEType) , ds.col("First_Failure_NE_Type_source").equalTo(firstFailureNEType.col("firstFailureNETypeKey")), "leftouter")
+                .join(broadcast(q850FailureCauseCode) , ds.col("Q_850_Failure_Cause_Code_source").equalTo(q850FailureCauseCode.col("Q850FailureCauseCodeKey")), "leftouter")
+                .join(broadcast(TELURICalledPartyAddressType) , ds.col("TEL_URI_Called_Party_Address_Type_source").equalTo(TELURICalledPartyAddressType.col("TELURICalledPartyAddressTypeKey")), "leftouter")
+                .join(broadcast(TELURICallingAddressType) , ds.col("TEL_URI_Calling_Address_Type_source").equalTo(TELURICallingAddressType.col("TELURICallingAddressTypeKey")), "leftouter")
+                .join(broadcast(TELURIDialingNumberType) , ds.col("TEL_URI_Dialing_Number_Type_source").equalTo(TELURIDialingNumberType.col("TELURIDialingNumberTypeKey")), "leftouter");
 
         ds = ds.drop("Access_Type_source")
                 .drop("User_Type_source")
@@ -266,6 +301,13 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 .drop("Calling_UE_Video_RBT_Capacity_source")
                 .drop("Update_200_OK_Result_for_RBT_source")
                 .drop("First_Failure_NE_Type_source")
+                .drop("Call_Forwarding_Reason_source")
+                .drop("P_Early_Media_Type_in_183_or_Update_source")
+                .drop("Q_850_Failure_Cause_Code_source")
+                .drop("TEL_URI_Called_Party_Address_Type_source")
+                .drop("TEL_URI_Calling_Address_Type_source")
+                .drop("TEL_URI_Dialing_Number_Type_source")
+
                 .drop("AccessTypeKey")
                 .drop("userTypeKey")
                 .drop("serviceTypeKey")
@@ -286,9 +328,14 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 .drop("callWaitingFlagKey")
                 .drop("callingUEVideoRBTCapacityKey")
                 .drop("update200OKResultForRBTKey")
-                .drop("firstFailureNETypeKey");
+                .drop("firstFailureNETypeKey")
+                .drop("CallForwardingReasonKey")
+                .drop("PEarlyMediaTypein183orUpdateKey")
+                .drop("Q850FailureCauseCodeKey")
+                .drop("TELURICalledPartyAddressTypeKey")
+                .drop("TELURICallingAddressTypeKey")
+                .drop("TELURIDialingNumberTypeKey");
 
-                
         // ds = generateKeyHash(ds, new String[]{"Session_ID"});
         ds.printSchema();
         return ds;

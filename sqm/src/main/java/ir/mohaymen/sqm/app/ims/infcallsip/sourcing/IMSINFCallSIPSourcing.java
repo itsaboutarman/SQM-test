@@ -20,8 +20,9 @@ public class IMSINFCallSIPSourcing extends Sourcing {
     }
     @Override
     protected Dataset<Row> extractColumns(Dataset<Row> ds) {
-        return ds;
+        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
     }
+
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {
         Dataset<Row> neRef = references.get("neRef");
