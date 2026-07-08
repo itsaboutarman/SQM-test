@@ -1,4 +1,4 @@
-package ir.mohaymen.sqm.app.ims.infcallsip.lake.singleinterface;
+package ir.mohaymen.sqm.app.other.lake.singleinterface;
 
 import ir.mohaymen.sqm.app.Job;
 import ir.mohaymen.sqm.app.Lake;
