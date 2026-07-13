@@ -31,7 +31,16 @@ public class S6ASourcing extends Sourcing {
     protected Dataset<Row> analyze(Dataset<Row> ds) {
         Dataset<Row> deviceRef = references.get("deviceRef");
         Dataset<Row> mmeRef = references.get("mmeRef");
-        Dataset<Row> transCauseRef = references.get("transCauseRef");
+        Dataset<Row> hssRef = references.get("hssRef");
+        Dataset<Row> mccMncRef = references.get("mccMncRef");
+
+        ds = ds.where(col("INTERFACEID").equalTo(8));
+
+        // Network & Roaming Information
+        mccMncRef = mccMncRef.select("Region", "Country_SIM", "MCC", "MNC", "Operator", "Roaming_Type")
+                .withColumnRenamed("MNC", "MNC_Ref")
+                .withColumnRenamed("MCC", "MCC_Ref");
+        mccMncRef.persist();
 
         // Device Information
         deviceRef = deviceRef.select("TAC", "TER_BRAND_NAME", "TER_MODEL_NAME", "TER_MODENAME",
@@ -41,13 +50,11 @@ public class S6ASourcing extends Sourcing {
 
         // MME
         mmeRef = mmeRef
-                .select("MME_Name", "MME_SIG_IP")
-                .withColumnRenamed("MME_SIG_IP", "mme_ref_sig_ip");
+                .select(col("MME_Name"),  explode(split(col("S6a_IP_Address"),";")).as("mme_ref_sig_ip"));
         mmeRef.persist();
 
-        //Transaction Cause
-        transCauseRef = transCauseRef.withColumnRenamed("trans_cause", "ref_trans_cause");
-        transCauseRef.persist();
+        hssRef = hssRef.select(col("HSS_Name") , explode(split(col("HSS_IPs"),";")).as("HSS_IP"));
+        hssRef.persist();
 
         ds = ds.withColumn("RECORD_DATE", from_unixtime(col("TRANS_REQ_TIME_SEC")))
                 .withColumn("RECORD_DATE", to_timestamp(col("RECORD_DATE"), "yyyy-MM-dd HH:mm:ss"));
@@ -55,32 +62,30 @@ public class S6ASourcing extends Sourcing {
         ds = ds.withColumn("RECORD_DATE_TEHRAN", col("RECORD_DATE").plus(expr("INTERVAL 3 HOURS 30 MINUTES")));
 
         //Get DeviceTAC
-        ds = ds.withColumn("DeviceTAC",
-                when(length(col("IMEI")).equalTo(14),
-                        concat(lit("0"), substring(col("IMEI"), 0, 7)))
-                        .when(length(col("IMEI")).equalTo(13),
-                                concat(lit("00"), substring(col("IMEI"), 0, 6)))
-                        .otherwise(substring(col("IMEI"), 0, 8))
-        );
-
+        ds = ds.withColumn("DeviceTAC",substring(lpad(col("IMEI"),15,"0"),1,8));
 
         Column deviceCond = ds.col("DeviceTAC").equalTo(col("dev_ref.TAC_padded"));
         Column mmeCond = ds.col("MME_SIG_IP").equalTo(col("mme_ref.mme_ref_sig_ip"));
-        Column transCauseCond = ds.col("TRANS_CAUSE").equalTo(col("transcause_ref.ref_trans_cause"));
-
+        Column hssCond = ds.col("HSS_SIG_IP").equalTo(col("hss_ref.HSS_IP"));
+        Column mccMncCond = ds.col("HOMEMCC").equalTo(col("MCC_MNC_ref.MCC_Ref"))
+                .and(col("HOMEMNC").equalTo(col("MCC_MNC_ref.MNC_Ref")));
 
         ds = ds.join(broadcast(deviceRef.as("dev_ref")), deviceCond, "leftouter")
                 .join(broadcast(mmeRef.as("mme_ref")), mmeCond, "leftouter")
-                .join(broadcast(transCauseRef.as("transcause_ref")), transCauseCond, "leftouter")
-                .withColumn("DeviceBrand", coalesce(col("dev_ref.TER_BRAND_NAME"), lit("Unknown")))
-                .withColumn("DeviceModel", coalesce(col("dev_ref.TER_MODEL_NAME"), lit("Unknown")))
-                .withColumn("DeviceTechnology", coalesce(col("dev_ref.TER_MODENAME"), lit("Unknown")))
-                .withColumn("DeviceType", coalesce(col("dev_ref.TER_TYPE_NAME_EN"), lit("Unknown")))
-                .withColumn("DeviceOS", coalesce(col("dev_ref.TER_OS_TYPE_NAME"), lit("Unknown")))
-                .withColumn("trans_cause_det", coalesce(col("transcause_ref.trans_cause_det"), col("TRANS_CAUSE")));
+                .join(broadcast(hssRef.as("hss_ref")), hssCond, "leftouter")
+                .join(broadcast(mccMncRef.as("MCC_MNC_ref")), mccMncCond, "leftouter")
+
+                .withColumn("Brand", coalesce(col("dev_ref.TER_BRAND_NAME"), lit("Unknown")))
+                .withColumn("Model", coalesce(col("dev_ref.TER_MODEL_NAME"), lit("Unknown")))
+                .withColumn("Technology", coalesce(col("dev_ref.TER_MODENAME"), lit("Unknown")))
+                .withColumn("Type", coalesce(col("dev_ref.TER_TYPE_NAME_EN"), lit("Unknown")))
+                .withColumn("OS", coalesce(col("dev_ref.TER_OS_TYPE_NAME"), lit("Unknown")))
+                .withColumn("MME_Name",coalesce(mmeRef.col("MME_Name"),lit("Unknown")))
+                .withColumn("HSS_Name",coalesce(hssRef.col("HSS_Name"),lit("Unknown")))
+                .withColumn("Country_SIM", coalesce(col("MCC_MNC_ref.Country_SIM"), lit("Unknown")))
+                .withColumn("Operator", coalesce(col("MCC_MNC_ref.Operator"), lit("Unknown")));
 
         ds = ds.drop("mme_ref_sig_ip")
-                .drop("ref_trans_cause")
                 .drop("TER_BRAND_NAME")
                 .drop("TER_MODEL_NAME")
                 .drop("TER_MODENAME")
@@ -88,10 +93,9 @@ public class S6ASourcing extends Sourcing {
                 .drop("TER_OS_TYPE_NAME")
                 .drop("DeviceTAC")
                 .drop("TAC_padded")
-                .drop("transcause_ref.trans_cause_det")
+                .drop("MNC_Ref")
+                .drop("MCC_Ref")
                 .withColumnRenamed("MME_SIG_IP", "MME_IP_Address");
-
-
         return ds;
     }
 
