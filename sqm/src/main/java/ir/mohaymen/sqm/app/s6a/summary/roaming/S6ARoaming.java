@@ -34,7 +34,7 @@ public class S6ARoaming extends Summary {
 
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {
-        ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "5 minutes").getField("start"));
+        ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "15 minutes").getField("start"));
         ds = ds.withColumn("TRANS_SUCCED_FLAG_ALL", when(col("TRANS_SUCCED_FLAG").isin(0, 1), 1).otherwise(0))
                 .withColumn("TRANS_SUCCED_FLAG_TRUE", when(col("TRANS_SUCCED_FLAG").equalTo(1), 1).otherwise(0))
                 .withColumn("TRANS_SUCCED_FLAG_FALSE", when(col("TRANS_SUCCED_FLAG").equalTo(0), 1).otherwise(0))
