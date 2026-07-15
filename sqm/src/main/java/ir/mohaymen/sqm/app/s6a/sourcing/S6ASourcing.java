@@ -8,6 +8,7 @@ import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.streaming.DataStreamWriter;
+import org.apache.spark.sql.types.DataTypes;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -67,8 +68,13 @@ public class S6ASourcing extends Sourcing {
         Column deviceCond = ds.col("DeviceTAC").equalTo(col("dev_ref.TAC_padded"));
         Column mmeCond = ds.col("MME_SIG_IP").equalTo(col("mme_ref.mme_ref_sig_ip"));
         Column hssCond = ds.col("HSS_SIG_IP").equalTo(col("hss_ref.HSS_IP"));
-        Column mccMncCond = ds.col("HOMEMCC").equalTo(col("MCC_MNC_ref.MCC_Ref"))
-                .and(col("HOMEMNC").equalTo(col("MCC_MNC_ref.MNC_Ref")));
+        Column mccMncCond =
+                col("HOMEMCC").cast(DataTypes.IntegerType)
+                        .equalTo(col("MCC_MNC_ref.MCC_Ref").cast(DataTypes.IntegerType))
+                        .and(
+                                col("HOMEMNC").cast(DataTypes.IntegerType)
+                                        .equalTo(col("MCC_MNC_ref.MNC_Ref").cast(DataTypes.IntegerType))
+                        );
 
         ds = ds.join(broadcast(deviceRef.as("dev_ref")), deviceCond, "leftouter")
                 .join(broadcast(mmeRef.as("mme_ref")), mmeCond, "leftouter")
