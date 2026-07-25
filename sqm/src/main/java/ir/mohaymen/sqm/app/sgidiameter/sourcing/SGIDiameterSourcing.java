@@ -25,7 +25,8 @@ public class SGIDiameterSourcing extends Sourcing {
 
     @Override
     protected Dataset<Row> extractColumns(Dataset<Row> ds) {
-        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
+//        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
+        return ds;
     }
 
     @Override
@@ -34,6 +35,27 @@ public class SGIDiameterSourcing extends Sourcing {
         Dataset<Row> ggsnRef = getReference("ggsnRef");
         Dataset<Row> sgsnRef = getReference("sgsnRef");
         Dataset<Row> sgw_pgw_ref = getReference("sgwPgwRef");
+        Dataset<Row> mccMncRef = references.get("mccMncRef");
+
+        ds = ds.where(col("INTERFACEID").equalTo(8).and(col("ROAM_DIRECTION").isNotNull()));
+
+        Dataset<Row> mccMncRefVisited = mccMncRef.select("Country" ,"MCC","MNC" ,"Operator", "Roaming_Type");
+        mccMncRefVisited = mccMncRefVisited.withColumnRenamed("Country", "Visited_Country")
+                .withColumnRenamed("Operator" ,"Visited_Operator")
+                .withColumnRenamed("Roaming_Type", "Visited_Roaming_Type")
+                .withColumnRenamed("MCC", "Visited_MCC_ref")
+                .withColumnRenamed("MNC", "Visited_MNC_ref");
+
+        mccMncRefVisited.persist();
+
+        // ------------------------------- Network & Roaming Information -------------------------------
+        mccMncRef = mccMncRef.select("Region", "Country", "MCC", "MNC", "Operator", "Roaming_Type")
+                .withColumnRenamed("Country", "Home_Country")
+                .withColumnRenamed("Operator" , "Home_Operator")
+                .withColumnRenamed("Roaming_Type", "Home_Roaming_Type")
+                .withColumnRenamed("MNC", "MNC_Ref")
+                .withColumnRenamed("MCC", "MCC_Ref");
+        mccMncRef.persist();
 
         // ------------------------------- Device Reference -------------------------------
         deviceRef = deviceRef.select("TAC", "TER_BRAND_NAME", "TER_MODEL_NAME", "TER_MODENAME",
@@ -93,6 +115,18 @@ public class SGIDiameterSourcing extends Sourcing {
         Column sgwCondRat6 = ((ds.col("RAT").equalTo(lit(6))).and(ds.col("SGSN_SGW_SIG_IP").equalTo(col("sgwRef.SGW_PGW_IP_Address"))));
         Column pgwCondRat6 = ((ds.col("RAT").equalTo(lit(6))).and(ds.col("GGSN_PGW_SIG_IP").equalTo(col("pgwRef.SGW_PGW_IP_Address"))));
 
+        // ------------------------------- mnc mcc -------------------------------
+        Column mccMncCondVisited = ds.col("MCC").cast(DataTypes.IntegerType)
+                .equalTo(mccMncRefVisited.col("Visited_MCC_ref").cast(DataTypes.IntegerType))
+                .and(ds.col("MNC").cast(DataTypes.IntegerType).
+                        equalTo(mccMncRefVisited.col("Visited_MNC_ref").cast(DataTypes.IntegerType)));
+
+        Column mccMncCond = col("HOMEMCC").cast(DataTypes.IntegerType)
+                        .equalTo(col("MCC_MNC_ref.MCC_Ref").cast(DataTypes.IntegerType))
+                        .and(
+                                col("HOMEMNC").cast(DataTypes.IntegerType)
+                                        .equalTo(col("MCC_MNC_ref.MNC_Ref").cast(DataTypes.IntegerType))
+                        );
 
         ds = ds.join(broadcast(deviceRef.as("deviceRef")),deviceCond,"leftouter")
                 .join(broadcast(sgsnRef.as("sgsnRef2")), sgsnCondRat2, "leftouter")
@@ -101,6 +135,8 @@ public class SGIDiameterSourcing extends Sourcing {
                 .join(broadcast(ggsnRef.as("ggsnRef3")), ggsnCondRat1, "leftouter")
                 .join(broadcast(sgwRef.as("sgwRef")), sgwCondRat6, "leftouter")
                 .join(broadcast(pgwRef.as("pgwRef")), pgwCondRat6, "leftouter")
+                .join(broadcast(mccMncRefVisited), mccMncCondVisited,"leftouter")
+                .join(broadcast(mccMncRef.as("MCC_MNC_ref")), mccMncCond, "leftouter")
 
                 // Device
                 .withColumn("Brand" , coalesce(deviceRef.col("TER_BRAND_NAME").cast(DataTypes.StringType), lit("Unknown")))
@@ -116,12 +152,32 @@ public class SGIDiameterSourcing extends Sourcing {
                 .withColumn("new_SGW", col("sgwRef.SGW"))
                 .withColumn("new_PGW", col("pgwRef.PGW"))
 
+                // MCC MNC
+                .withColumn("Visited_Country", coalesce(col("Visited_Country"),lit("Unknown")))
+                .withColumn("Visited_Operator", coalesce(col("Visited_Operator"),lit("Unknown")))
+                .withColumn("Visited_Roaming_Type", coalesce(col("Visited_Roaming_Type"),lit("Unknown")))
+                .withColumn("Home_Country", coalesce(col("Home_Country"),lit("Unknown")))
+                .withColumn("Home_Operator", coalesce(col("Home_Operator"),lit("Unknown")))
+                .withColumn("Home_Roaming_Type", coalesce(col("Home_Roaming_Type"),lit("Unknown")))
+
                 .selectExpr(selectedColumns)
                 .withColumnRenamed("new_SGSN", "SGSN")
                 .withColumnRenamed("new_SGSN_POOL", "SGSN_POOL")
                 .withColumnRenamed("new_GGSN", "GGSN")
                 .withColumnRenamed("new_SGW", "SGW")
                 .withColumnRenamed("new_PGW", "PGW");
+
+        ds = ds.drop("TER_BRAND_NAME")
+                .drop("TER_MODEL_NAME")
+                .drop("TER_MODENAME")
+                .drop("TER_TYPE_NAME_EN")
+                .drop("TER_OS_TYPE_NAME")
+                .drop("DeviceTAC")
+                .drop("TAC_padded")
+                .drop("MCC_ref")
+                .drop("MNC_ref")
+                .drop("Visited_MCC_ref")
+                .drop("Visited_MNC_ref");
 
         return ds;
     }
