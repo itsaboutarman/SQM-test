@@ -35,10 +35,22 @@ public class S6ASourcing extends Sourcing {
         Dataset<Row> hssRef = references.get("hssRef");
         Dataset<Row> mccMncRef = references.get("mccMncRef");
 
-        ds = ds.where(col("INTERFACEID").equalTo(8));
+        ds = ds.where(col("INTERFACEID").equalTo(8).and(col("ROAM_DIRECTION").isNotNull()));
+
+        Dataset<Row> mccMncRefVisited = mccMncRef.select("Country" ,"MCC","MNC" ,"Operator", "Roaming_Type");
+        mccMncRefVisited = mccMncRefVisited.withColumnRenamed("Country", "Visited_Country")
+                .withColumnRenamed("Operator" ,"Visited_Operator")
+                .withColumnRenamed("Roaming_Type","Visited_Roaming_Type")
+                .withColumnRenamed("MCC", "Visited_MCC_ref")
+                .withColumnRenamed("MNC", "Visited_MNC_ref");
+
+        mccMncRefVisited.persist();
 
         // Network & Roaming Information
-        mccMncRef = mccMncRef.select("Region", "Country_SIM", "MCC", "MNC", "Operator", "Roaming_Type")
+        mccMncRef = mccMncRef.select("Region", "Country", "MCC", "MNC", "Operator", "Roaming_Type")
+                .withColumnRenamed("Country", "Home_Country")
+                .withColumnRenamed("Operator" , "Home_Operator")
+                .withColumnRenamed("Roaming_Type", "Home_Roaming_Type")
                 .withColumnRenamed("MNC", "MNC_Ref")
                 .withColumnRenamed("MCC", "MCC_Ref");
         mccMncRef.persist();
@@ -68,6 +80,12 @@ public class S6ASourcing extends Sourcing {
         Column deviceCond = ds.col("DeviceTAC").equalTo(col("dev_ref.TAC_padded"));
         Column mmeCond = ds.col("MME_SIG_IP").equalTo(col("mme_ref.mme_ref_sig_ip"));
         Column hssCond = ds.col("HSS_SIG_IP").equalTo(col("hss_ref.HSS_IP"));
+
+        // mnc mcc
+        Column mccMncCondVisited = ds.col("MCC").cast(DataTypes.IntegerType)
+                .equalTo(mccMncRefVisited.col("Visited_MCC_ref").cast(DataTypes.IntegerType))
+                .and(ds.col("MNC").cast(DataTypes.IntegerType).
+                        equalTo(mccMncRefVisited.col("Visited_MNC_ref").cast(DataTypes.IntegerType)));
         Column mccMncCond =
                 col("HOMEMCC").cast(DataTypes.IntegerType)
                         .equalTo(col("MCC_MNC_ref.MCC_Ref").cast(DataTypes.IntegerType))
@@ -79,8 +97,8 @@ public class S6ASourcing extends Sourcing {
         ds = ds.join(broadcast(deviceRef.as("dev_ref")), deviceCond, "leftouter")
                 .join(broadcast(mmeRef.as("mme_ref")), mmeCond, "leftouter")
                 .join(broadcast(hssRef.as("hss_ref")), hssCond, "leftouter")
+                .join(broadcast(mccMncRefVisited), mccMncCondVisited,"leftouter")
                 .join(broadcast(mccMncRef.as("MCC_MNC_ref")), mccMncCond, "leftouter")
-
                 .withColumn("Brand", coalesce(col("dev_ref.TER_BRAND_NAME"), lit("Unknown")))
                 .withColumn("Model", coalesce(col("dev_ref.TER_MODEL_NAME"), lit("Unknown")))
                 .withColumn("Technology", coalesce(col("dev_ref.TER_MODENAME"), lit("Unknown")))
@@ -88,8 +106,12 @@ public class S6ASourcing extends Sourcing {
                 .withColumn("OS", coalesce(col("dev_ref.TER_OS_TYPE_NAME"), lit("Unknown")))
                 .withColumn("MME_Name",coalesce(mmeRef.col("MME_Name"),lit("Unknown")))
                 .withColumn("HSS_Name",coalesce(hssRef.col("HSS_Name"),lit("Unknown")))
-                .withColumn("Country_SIM", coalesce(col("MCC_MNC_ref.Country_SIM"), lit("Unknown")))
-                .withColumn("Operator", coalesce(col("MCC_MNC_ref.Operator"), lit("Unknown")));
+                .withColumn("Visited_Country", coalesce(col("Visited_Country"),lit("Unknown")))
+                .withColumn("Visited_Operator", coalesce(col("Visited_Operator"),lit("Unknown")))
+                .withColumn("Visited_Roaming_Type", coalesce(col("Visited_Roaming_Type"),lit("Unknown")))
+                .withColumn("Home_Country", coalesce(col("Home_Country"),lit("Unknown")))
+                .withColumn("Home_Operator", coalesce(col("Home_Operator"),lit("Unknown")))
+                .withColumn("Home_Roaming_Type", coalesce(col("Home_Roaming_Type"),lit("Unknown")));
 
         ds = ds.drop("mme_ref_sig_ip")
                 .drop("TER_BRAND_NAME")
@@ -99,8 +121,10 @@ public class S6ASourcing extends Sourcing {
                 .drop("TER_OS_TYPE_NAME")
                 .drop("DeviceTAC")
                 .drop("TAC_padded")
-                .drop("MNC_Ref")
-                .drop("MCC_Ref")
+                .drop("MCC_ref")
+                .drop("MNC_ref")
+                .drop("Visited_MCC_ref")
+                .drop("Visited_MNC_ref")
                 .withColumnRenamed("MME_SIG_IP", "MME_IP_Address");
         return ds;
     }
