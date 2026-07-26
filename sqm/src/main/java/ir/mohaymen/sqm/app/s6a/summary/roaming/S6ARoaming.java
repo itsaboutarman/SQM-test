@@ -25,7 +25,7 @@ public class S6ARoaming extends Summary {
         return ds.select("Table_ID", "Record_Date", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                 "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "HSS_Name", "MME_Name", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
                 "TRANS_RESELECT_FLAG", "TRANS_CAUSE_TYPE", "TRANS_CAUSE", "RESYN_INFO_FLAG", "UE_SRVCC_CAPABILITY",
-                "Country_SIM", "Operator", "Roaming_Type", "FAIL_CATEGORY",
+                "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "FAIL_CATEGORY",
                 "TRANS_RSP_TIME_SEC", "TRANS_RSP_TIME_MSEC",
                 "TRANS_REQ_TIME_SEC", "TRANS_REQ_TIME_MSEC"
         );
@@ -49,7 +49,7 @@ public class S6ARoaming extends Summary {
         ds = generateKeyHash(ds, new String[]{"Table_ID", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                 "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "HSS_Name", "MME_Name", "TRANS_TYPE",
                 "TRANS_SUCCED_FLAG", "TRANS_RESELECT_FLAG", "TRANS_CAUSE_TYPE", "TRANS_CAUSE",
-                "RESYN_INFO_FLAG", "UE_SRVCC_CAPABILITY", "Country_SIM", "Operator", "Roaming_Type",
+                "RESYN_INFO_FLAG", "UE_SRVCC_CAPABILITY", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
                 "FAIL_CATEGORY"});
 
         System.out.println("output schema:");
@@ -64,7 +64,7 @@ public class S6ARoaming extends Summary {
                 .groupBy("Table_ID", "Record_Date", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                         "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "HSS_Name", "MME_Name", "TRANS_TYPE",
                         "TRANS_SUCCED_FLAG", "TRANS_RESELECT_FLAG", "TRANS_CAUSE_TYPE", "TRANS_CAUSE",
-                        "RESYN_INFO_FLAG", "UE_SRVCC_CAPABILITY", "Country_SIM", "Operator", "Roaming_Type",
+                        "RESYN_INFO_FLAG", "UE_SRVCC_CAPABILITY", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
                         "FAIL_CATEGORY")
                 .agg(
                         sum("TRANS_SUCCED_FLAG_ALL").alias("Total_Count"),
