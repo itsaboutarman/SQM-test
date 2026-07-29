@@ -17,7 +17,7 @@ import java.util.Map;
 
 import static org.apache.spark.sql.functions.*;
 
-@Job
+
 public class SGIDiameterSourcing extends Sourcing {
     public SGIDiameterSourcing(Source source, Sink sink, Map<String, Dataset<Row>> references) {
         super(source, sink, references);
@@ -37,7 +37,7 @@ public class SGIDiameterSourcing extends Sourcing {
         Dataset<Row> sgw_pgw_ref = getReference("sgwPgwRef");
         Dataset<Row> mccMncRef = references.get("mccMncRef");
 
-        ds = ds.where(col("INTERFACEID").equalTo(8).and(col("ROAM_DIRECTION").isNotNull()));
+        ds = ds.where(col("ROAM_DIRECTION").isNotNull());
 
         Dataset<Row> mccMncRefVisited = mccMncRef.select("Country" ,"MCC","MNC" ,"Operator", "Roaming_Type");
         mccMncRefVisited = mccMncRefVisited.withColumnRenamed("Country", "Visited_Country")
@@ -45,6 +45,12 @@ public class SGIDiameterSourcing extends Sourcing {
                 .withColumnRenamed("Roaming_Type", "Visited_Roaming_Type")
                 .withColumnRenamed("MCC", "Visited_MCC_ref")
                 .withColumnRenamed("MNC", "Visited_MNC_ref");
+
+
+        mccMncRefVisited = mccMncRefVisited.withColumn("Visited_MCC_ref_int" ,when(mccMncRefVisited.col("Visited_MCC_ref").isNull() , lit(0)).otherwise(mccMncRefVisited.col("Visited_MCC_ref")).cast(DataTypes.IntegerType));
+
+        mccMncRefVisited = mccMncRefVisited.withColumn("Visited_MNC_ref_int" ,when(mccMncRefVisited.col("Visited_MNC_ref").isNull() , lit(0)).otherwise(mccMncRefVisited.col("Visited_MNC_ref")).cast(DataTypes.IntegerType));
+
 
         mccMncRefVisited.persist();
 
@@ -78,6 +84,10 @@ public class SGIDiameterSourcing extends Sourcing {
         Dataset<Row> pgwRef = sgw_pgw_ref.select("NE_Name", "SGW_PGW_IP_Address")
                 .withColumnRenamed("NE_Name", "PGW");
 
+
+
+
+
         ggsnRef.persist();
         sgsnRef.persist();
         sgwRef.persist();
@@ -89,10 +99,13 @@ public class SGIDiameterSourcing extends Sourcing {
                 .withColumn("RECORD_DATE", to_timestamp(col("RECORD_DATE"), "yyyy-MM-dd HH:mm:ss"));
         ds = addTimeColumns(ds);
 
+        ds = ds.withColumn("MCC_int" ,when(ds.col("MCC").isNull() , lit(0)).otherwise(col("MCC")).cast(DataTypes.IntegerType));
+
+        ds = ds.withColumn("MNC_int" ,when(ds.col("MNC").isNull() , lit(0)).otherwise(col("MNC")).cast(DataTypes.IntegerType));
         // ------------------------------- Selected columns -------------------------------
         String[] cols = ds.columns();
         String[] addedCols = {"Brand", "Model", "Technology", "Type", "OS", "new_SGSN", "new_SGSN_POOL",
-                "new_GGSN", "new_SGW", "new_PGW"};
+                "new_GGSN", "new_SGW", "new_PGW","Visited_Country","Visited_Operator","Visited_Roaming_Type","Home_Country","Home_Operator","Home_Roaming_Type","Visited_MCC_ref_int","Visited_MNC_ref_int"};
 
         String[] selectedColumns = ArrayUtil.add(cols, addedCols);
 
@@ -116,17 +129,20 @@ public class SGIDiameterSourcing extends Sourcing {
         Column pgwCondRat6 = ((ds.col("RAT").equalTo(lit(6))).and(ds.col("GGSN_PGW_SIG_IP").equalTo(col("pgwRef.SGW_PGW_IP_Address"))));
 
         // ------------------------------- mnc mcc -------------------------------
-        Column mccMncCondVisited = ds.col("MCC").cast(DataTypes.IntegerType)
-                .equalTo(mccMncRefVisited.col("Visited_MCC_ref").cast(DataTypes.IntegerType))
-                .and(ds.col("MNC").cast(DataTypes.IntegerType).
-                        equalTo(mccMncRefVisited.col("Visited_MNC_ref").cast(DataTypes.IntegerType)));
+
+
+
+        Column mccMncCondVisited = ds.col("MCC_int").equalTo(mccMncRefVisited.col("Visited_MCC_ref_int"))
+                .and(
+                        ds.col("MNC_int").equalTo(mccMncRefVisited.col("Visited_MNC_ref_int"))
+                );
 
         Column mccMncCond = col("HOMEMCC").cast(DataTypes.IntegerType)
-                        .equalTo(col("MCC_MNC_ref.MCC_Ref").cast(DataTypes.IntegerType))
-                        .and(
-                                col("HOMEMNC").cast(DataTypes.IntegerType)
-                                        .equalTo(col("MCC_MNC_ref.MNC_Ref").cast(DataTypes.IntegerType))
-                        );
+                .equalTo(col("MCC_MNC_ref.MCC_Ref").cast(DataTypes.IntegerType))
+                .and(
+                        col("HOMEMNC").cast(DataTypes.IntegerType)
+                                .equalTo(col("MCC_MNC_ref.MNC_Ref").cast(DataTypes.IntegerType))
+                );
 
         ds = ds.join(broadcast(deviceRef.as("deviceRef")),deviceCond,"leftouter")
                 .join(broadcast(sgsnRef.as("sgsnRef2")), sgsnCondRat2, "leftouter")
@@ -173,11 +189,11 @@ public class SGIDiameterSourcing extends Sourcing {
                 .drop("TER_TYPE_NAME_EN")
                 .drop("TER_OS_TYPE_NAME")
                 .drop("DeviceTAC")
-                .drop("TAC_padded")
-                .drop("MCC_ref")
-                .drop("MNC_ref")
-                .drop("Visited_MCC_ref")
-                .drop("Visited_MNC_ref");
+                .drop("TAC_padded");
+//                .drop("MCC_ref")
+//                .drop("MNC_ref")
+//                .drop("Visited_MCC_ref")
+//                .drop("Visited_MNC_ref");
 
         return ds;
     }
