@@ -22,7 +22,7 @@ public class SGIDiameterRoaming extends Summary {
 
     @Override
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
-        return ds.select("Table_ID", "Record_Date", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
+        return ds.select("Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                 "HOMEMNC", "MCC", "MNC", "TRANS_CAUSE_TYPE", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
                 "TRANS_RESELECT_FLAG", "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
                 "TRANS_RSP_TIME_SEC", "TRANS_RSP_TIME_MSEC", "TRANS_REQ_TIME_SEC", "TRANS_REQ_TIME_MSEC"
@@ -58,7 +58,7 @@ public class SGIDiameterRoaming extends Summary {
     private Dataset<Row> aggregateFunc(Dataset<Row> ds) {
         ds = ds.withWatermark("RECORD_DATE", "1440 minutes")
                 // RECORD_DATE is TRANS_REQ_TIME_SEC dim in docs
-                .groupBy("Table_ID", "Record_Date", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
+                .groupBy("Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                         "HOMEMNC", "MCC", "MNC", "TRANS_CAUSE_TYPE", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
                         "TRANS_RESELECT_FLAG", "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type")
                 .agg(

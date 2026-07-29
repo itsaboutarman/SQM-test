@@ -25,7 +25,7 @@ public class GTPV0V1Sourcing extends Sourcing {
 
     @Override
     protected Dataset<Row> extractColumns(Dataset<Row> ds) {
-        return ds;
+        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
     }
 
     @Override
