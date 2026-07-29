@@ -22,7 +22,7 @@ public class GTPV0V1Roaming extends Summary {
 
     @Override
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
-        return ds.select("Table_ID", "Record_Date", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
+        return ds.select("Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                 "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "TRANS_TYPE", "SIG_DIRECTION", "TRANS_SUCCED_FLAG",
                 "TRANS_CAUSE", "ACT_TYPE", "NSAPI", "UL_VOLOME", "DL_VOLOME", "MBR_DL_NEG", "MBR_UL_NEG",
                 "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
@@ -61,7 +61,7 @@ public class GTPV0V1Roaming extends Summary {
         ds = ds.withWatermark("RECORD_DATE", "1440 minutes")
                 // RECORD_DATE is TRANS_REQ_TIME_SEC dim in docs
                 .groupBy(
-                        "Table_ID", "Record_Date", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
+                        "Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                         "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "TRANS_TYPE", "SIG_DIRECTION", "TRANS_SUCCED_FLAG",
                         "TRANS_CAUSE", "ACT_TYPE", "NSAPI", "UL_VOLOME", "DL_VOLOME", "MBR_DL_NEG", "MBR_UL_NEG",
                         "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type")
