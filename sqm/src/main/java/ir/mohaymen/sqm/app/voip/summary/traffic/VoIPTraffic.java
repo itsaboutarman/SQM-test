@@ -20,51 +20,53 @@ public class VoIPTraffic extends Summary{
     public VoIPTraffic(Source source, Sink sink, Map<String, Dataset<Row>> reference) {
         super(source, sink, reference);
     }
+
     @Override
     public Dataset<Row> selectColumns(Dataset<Row> ds) {
-        return ds.select("RECORD_DATE", "APN", "RAT", "APP_ID", "TCP_Connection_Status", "City", "Province",
-                "Region", "Country", "Protocol_Name", "Protocol_Category_Name", "Brand", "Model", "Technology",
-                "Type", "OS", "Uplink_Traffic", "Downlink_Traffic", "Uplink_Packets", "Downlink_Packets");
+        return ds.select("RECORD_DATE", "Country", "Region", "Province", "City", "BSC_Name", "RNC_Name", "ENODEB_ID",
+                "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "APN", "Protocol_Name", "Application_Name",
+                "Uplink_Traffic", "Downlink_Traffic", "Signaling_Consumption_Flag_Signaling_Messages",
+                "Server_Side_Uplink_Lost_Packets", "Server_Side_Downlink_Lost_Packets", "User_Side_Uplink_Lost_Packets",
+                "User_Side_Downlink_Lost_Packets", "Uplink_Valid_Traffic", "Uplink_Valid_Transmission_Duration",
+                "Downlink_Valid_Traffic", "Downlink_Valid_Transmission_Duration", "Uplink_Packets", "Downlink_Packets");
     }
 
     @Override
     public Dataset<Row> analyze(Dataset<Row> ds) {
-        ds = ds.where(col("TCP_Connection_Status").isNotNull())
-                .withColumn("RECORD_DATE" , window(col("RECORD_DATE") ,"15 minutes").getField("start"));
+        ds = ds.withColumn("RECORD_DATE" , window(col("RECORD_DATE") ,"15 minutes").getField("start"));
 
-        ds = ds.withColumnRenamed("Type","Device_Type")
-                .withColumnRenamed("TCP_Connection_Status","GET_Success_Flag")
-                .withColumnRenamed("Protocol_Name","Protocol")
-                .withColumnRenamed("Protocol_Category_Name","Protocol_Category");
+        ds = ds.withColumnRenamed("ENODEB_ID", "ENodeB")
+                .withColumnRenamed("RNC_Name", "RNC")
+                .withColumnRenamed("BSC_Name", "BSC")
+                .withColumnRenamed("Protocol_Name", "Protocol");
 
         ds = aggregateFunc(ds);
-        ds = calculateMetricFunc(ds);
         ds = generateKeyHash(ds, new String[]{
-                "APN", "RAT", "APP_ID", "GET_Success_Flag", "City", "Province",
-                "Region", "Country", "Protocol", "Protocol_Category", "Brand", "Model", "Technology",
-                "Device_Type", "OS"});
+                "Country", "Region", "Province", "City", "BSC", "RNC", "ENodeB",
+                "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "APN", "Protocol", "Application_Name"});
         ds.printSchema();
         return ds;
     }
 
     public Dataset<Row> aggregateFunc(Dataset<Row> ds) {
         ds = ds.withWatermark("RECORD_DATE", "1440 minutes")
-                .groupBy("RECORD_DATE","APN", "RAT", "APP_ID", "GET_Success_Flag", "City", "Province",
-                        "Region", "Country", "Protocol", "Protocol_Category", "Brand", "Model", "Technology",
-                        "Device_Type", "OS")
+                .groupBy("RECORD_DATE", "Country", "Region", "Province", "City", "BSC", "RNC", "ENodeB",
+                        "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "APN", "Protocol", "Application_Name")
                 .agg(
-                        sum("Uplink_Traffic").alias("uplink_traffic"),
-                        sum("Downlink_Traffic").alias("downlink_traffic"),
-                        sum("Uplink_Packets").alias("uplink_packets"),
-                        sum("Downlink_Packets").alias("downlink_packets"),
-                        count(lit(1)).alias("total_count")
+                        sum("Uplink_Traffic").alias("Uplink_Traffic_Bytes"),
+                        sum("Downlink_Traffic").alias("Downlink_Traffic_Bytes"),
+                        sum("Signaling_Consumption_Flag_Signaling_Messages").alias("Signaling_message_counts"),
+                        sum("Server_Side_Uplink_Lost_Packets").alias("Server_Side_Uplink_TCP_Packet_Losses"),
+                        sum("Server_Side_Downlink_Lost_Packets").alias("Server_Side_Downlink_TCP_Packet_Losses"),
+                        sum("User_Side_Uplink_Lost_Packets").alias("Client_Side_Uplink_TCP_Packet_Losses"),
+                        sum("User_Side_Downlink_Lost_Packets").alias("Client_Side_Downlink_TCP_Packet_Losses"),
+                        sum("Uplink_Valid_Traffic").alias("Uplink_Effective_Traffic"),
+                        sum("Uplink_Valid_Transmission_Duration").alias("Uplink_Valid_Transmission_Duration"),
+                        sum("Downlink_Valid_Traffic").alias("Downlink_Effective_Traffic"),
+                        sum("Downlink_Valid_Transmission_Duration").alias("Downlink_Valid_Transmission_Duration"),
+                        sum("Uplink_Packets").alias("Uplink_Packets"),
+                        sum("Downlink_Packets").alias("Downlink_Packets")
                 );
-        return ds;
-    }
-
-    private Dataset<Row> calculateMetricFunc(Dataset<Row> ds) {
-        ds = ds.withColumn("uplink_traffic", col("uplink_traffic").divide(Math.pow(1024,4)))
-                .withColumn("downlink_traffic", col("downlink_traffic").divide(Math.pow(1024,4)));
         return ds;
     }
 }
