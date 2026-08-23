@@ -90,3 +90,6 @@ public class Schema extends ir.mohaymen.sqm.app.Schema {
                 .add("MONITORING_KEY_3", DataTypes.LongType, true);
     }
 }
+
+
+

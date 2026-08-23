@@ -15,7 +15,7 @@ public abstract class AppLayer implements App {
     }
 
     @Override
-    public Dataset<Row> read() {
+    public Dataset<Row> read() throws Exception {
         Dataset<Row> ds = app.read();
         return ds;
     }

@@ -73,8 +73,8 @@ public class StreamingSourcing extends Sourcing {
                 .withColumn("LAC2g_hex", hex(col("LAC2g").cast(DataTypes.IntegerType)))
                 .withColumn("CID_hex", hex(col("CID2g").cast(DataTypes.IntegerType)));
 
-        Dataset<Row> location4gRef2 = location4gRef.as("loc4gRef2");
-        Dataset<Row> location4gRef3 = location4gRef.as("loc4gRef3");
+        Dataset<Row> location4gRef2 = location4gRef.as("loc4gRef2").withColumnRenamed("ENODEB_ID","ENODEB_ID2");
+        Dataset<Row> location4gRef3 = location4gRef.as("loc4gRef3").withColumnRenamed("ENODEB_ID","ENODEB_ID3");
 
         location4gRef2.persist();
         location4gRef3.persist();
@@ -139,7 +139,7 @@ public class StreamingSourcing extends Sourcing {
         Column cell4gRefCond2 = ds.col("RAT").equalTo(6).and(
                 ds.col("LAC").isNull().and(ds.col("SAC").isNull()).and(ds.col("CI").isNotNull())
                 .and(location4gRef2.col("Cell_ID").equalTo(ds.col("realCID")))
-                .and(location4gRef2.col("ENODEB_ID").equalTo(ds.col("eNodeB_calc"))));
+                .and(location4gRef2.col("ENODEB_ID2").equalTo(ds.col("eNodeB_calc"))));
 
         Column cell3gRefCond = ds.col("RAT").equalTo(1)
                 .and( // Normal Join
@@ -150,7 +150,7 @@ public class StreamingSourcing extends Sourcing {
         Column cell4gRefCond3 = ds.col("RAT").equalTo(1)
                 .and(ds.col("LAC").isNull().and(ds.col("SAC").isNull()).and(ds.col("CI").isNotNull())
                 .and(location4gRef3.col("Cell_ID").equalTo(ds.col("realCID")))
-                .and(location4gRef3.col("ENODEB_ID").equalTo(ds.col("eNodeB_calc"))));
+                .and(location4gRef3.col("ENODEB_ID3").equalTo(ds.col("eNodeB_calc"))));
 
         Column cell2gRefCond = ds.col("RAT").equalTo(2)
                 .and(location2gRef.col("LAC2g_hex").equalTo(ds.col("LAC"))
@@ -208,7 +208,7 @@ public class StreamingSourcing extends Sourcing {
                 .withColumn("SITE_Name",location2gRef.col("SITE_Name"))
                 .withColumn("RNC_Name",location3gRef.col("RNC"))
                 .withColumn("NodeB_Name",location3gRef.col("NODEB_LABEL"))
-                .withColumn("ENODEB_ID",coalesce(location4gRef.col("ENODEB_ID"),location4gRef2.col("ENODEB_ID"),location4gRef3.col("ENODEB_ID")))
+                .withColumn("ENODEB_ID",coalesce(location4gRef.col("ENODEB_ID"),location4gRef2.col("ENODEB_ID2"),location4gRef3.col("ENODEB_ID3")))
                 // .withColumn("ENodeB_Name",location4gRef.col("ENODEB_Name"))
 
                 // APN
@@ -257,7 +257,6 @@ public class StreamingSourcing extends Sourcing {
         ds.printSchema();
         return ds;
     }
-
 
     @Override
     protected DataStreamWriter<Row> partitionData(DataStreamWriter<Row> dw) {
@@ -309,17 +308,18 @@ public class StreamingSourcing extends Sourcing {
 
 
         // remove single-character segments
-        Column filteredParts = expr(
-                "filter(" +
-                        "split(" + cleanAPN.expr().sql() + ", '\\\\.'), " +
-                        "x -> length(x) > 1" +
-                        ")"
-        );
-
-        // 1️⃣0️⃣ Rebuild APN
+        // Column filteredParts_old = expr(
+        //         "filter(" +
+        //                 "split(" + cleanAPN.expr().sql() + ", '\\\\.'), " +
+        //                 "x -> length(x) > 1" +
+        //                 ")"
+        // );
+        Column filteredParts =
+                filter(
+                        split(cleanAPN, "\\."),
+                        x -> length(x).gt(lit(1))
+                );
         Column rebuilt = concat_ws(".", filteredParts);
-
-        // 1️⃣1️⃣ Remove duplicate suffixes (.mci.mci → .mci)
         rebuilt = regexp_replace(rebuilt, "(\\.mci)+", ".mci");
         rebuilt = regexp_replace(rebuilt, "(\\.irancell)+", ".irancell");
 

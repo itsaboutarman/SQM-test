@@ -21,12 +21,10 @@ public class S6ASourcing extends Sourcing {
         super(source, sink, references);
     }
 
-
     @Override
     protected Dataset<Row> extractColumns(Dataset<Row> ds) {
         return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
     }
-
 
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {

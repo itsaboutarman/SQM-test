@@ -18,11 +18,11 @@ public class IMSINFCallSIPSourcing extends Sourcing {
     public IMSINFCallSIPSourcing(Source source, Sink sink, Map<String, Dataset<Row>> references) {
         super(source, sink, references);
     }
+    
     @Override
     protected Dataset<Row> extractColumns(Dataset<Row> ds) {
-        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
+        return FormatConverter.fromCSV(ds,Schema.getSchema(),"|");
     }
-
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {
         Dataset<Row> neRef = references.get("neRef");

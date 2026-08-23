@@ -3,6 +3,8 @@ package ir.mohaymen.sqm.exporters;
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Gauge;
 import io.prometheus.client.exporter.PushGateway;
+import ir.mohaymen.sqm.metrics.CustomMetricsSource;
+import org.apache.spark.SparkEnv;
 import org.apache.spark.sql.streaming.StreamingQueryListener;
 import org.json.JSONObject;
 
@@ -13,9 +15,10 @@ import java.util.Map;
 public class StatsListener extends StreamingQueryListener {
     private Map<String, String> options;
     private Map<String, Gauge> gaugeMap = new HashMap<>();
-
-    public StatsListener(Map<String, String> options) {
+    private  CustomMetricsSource customMetricsSource;
+    public StatsListener(Map<String, String> options , CustomMetricsSource customMetricsSource) {
         this.options = options;
+        this.customMetricsSource = customMetricsSource;
     }
 
     public void onQueryStarted(final QueryStartedEvent event){
@@ -26,6 +29,7 @@ public class StatsListener extends StreamingQueryListener {
         JSONObject jsonObj = new JSONObject(eventJson);
         try {
             Map<String, Double> data = extractMetrics(jsonObj);
+            updateKafkaMetrics(data);
             push(data);
         } catch (Exception e) {
             throw new RuntimeException("Error in extract metric from listener: " , e);
@@ -33,6 +37,20 @@ public class StatsListener extends StreamingQueryListener {
     }
     public void onQueryTerminated(final QueryTerminatedEvent event){
         ;
+    }
+
+    private  void updateKafkaMetrics(Map<String, Double> data){
+        try {
+            double avgAffsetsLag = data.getOrDefault("avgOffsetsBehindLatest",-1d);
+
+            if (avgAffsetsLag != -1d) {
+                customMetricsSource.updateAverageOffsetsBehind((long) avgAffsetsLag);
+                System.out.println("[KafkaMetrics] avgOffsetsBehindLatest = "
+                        + avgAffsetsLag);}
+        }
+        catch (Exception e){
+            System.out.println(e);
+        }
     }
 
     private Map<String, Double> extractMetrics(JSONObject jsonObj){

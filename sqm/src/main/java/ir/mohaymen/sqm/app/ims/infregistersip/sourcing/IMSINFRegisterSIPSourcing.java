@@ -60,7 +60,6 @@ public class IMSINFRegisterSIPSourcing extends Sourcing {
                 .withColumn("TAC_padded", lpad(deviceRef.col("TAC"), 8, "0"))
                 .drop("TAC");
         deviceRef.persist();
-
         locationRef = locationRef.withColumn("CID" , col("CID").cast(DataTypes.StringType));
         locationRef = locationRef.withColumn("ENODBID" , col("ENODeBID").cast(DataTypes.StringType));
         locationRef = locationRef.drop("ENODeBID");

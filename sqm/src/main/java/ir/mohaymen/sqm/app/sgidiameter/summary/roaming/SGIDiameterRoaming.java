@@ -60,7 +60,6 @@ public class SGIDiameterRoaming extends Summary {
 
     private Dataset<Row> aggregateFunc(Dataset<Row> ds) {
         ds = ds.withWatermark("RECORD_DATE", "1440 minutes")
-                // RECORD_DATE is TRANS_REQ_TIME_SEC dim in docs
                 .groupBy("Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                         "HOMEMNC", "MCC", "MNC", "TRANS_CAUSE_TYPE", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
                         "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "RAT",

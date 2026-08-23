@@ -25,8 +25,8 @@ public class WebTCPSummary extends Summary {
     @Override
     public Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("RECORD_DATE", "Start_Time_s", "Country", "Region", "Province", "City", "BSC_Name", "RNC_Name", "ENODEB_ID",
-                "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "APN", "Protocol", "AVG_DW_RTT_MICRO_SEC", "Application_Name",
-                "AVG_UL_RTT_MICRO_SEC", "TCP_Connection_Status", "TCP_Connection_Release_Status", "APP_ID",
+                "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "Protocol", "AVG_DW_RTT_MICRO_SEC", "Application_Name","APN_Edit",
+                "AVG_UL_RTT_MICRO_SEC", "TCP_Connection_Status", "TCP_Connection_Release_Status", "APP_ID","Brand",
                 "Protocol_Category_Name", "Uplink_Traffic", "Downlink_Traffic", "Total_TCP_Connect_RTT_ms",
                 "Server_Side_Uplink_Lost_Packets", "Server_Side_Downlink_Lost_Packets", "User_Side_Uplink_Lost_Packets",
                 "User_Side_Downlink_Lost_Packets", "TCP_Uplink_Packets_With_Payload",
@@ -49,7 +49,10 @@ public class WebTCPSummary extends Summary {
                 .when(col("AVG_DW_RTT_MICRO_SEC").geq(2000).and(col("AVG_DW_RTT_MICRO_SEC").lt(2400)), 3)
                 .when(col("AVG_DW_RTT_MICRO_SEC").geq(2400), 4));
         ds = ds.withColumn("Long_Down_RTTs", when(col("Long_Down_RTTs").isin(1, 2, 3, 4) ,col("Long_Down_RTTs")).otherwise(0));
-
+        ds = ds.withColumnRenamed("APN_Edit","APN");
+        ds = ds.withColumn("Brand_Category" ,when(col("Brand").isin("SAMSUNG","XIAOMI" , "APPLE", "Unknown"),
+                when(col("Brand").isin("SAMSUNG","XIAOMI" , "APPLE"),lit("Common")).otherwise(lit("Not specified")))
+                .otherwise(lit("Rare")));
         ds = ds.withColumn("Long_Up_RTTs", when(col("AVG_UL_RTT_MICRO_SEC").geq(500).and(col("AVG_UL_RTT_MICRO_SEC").lt(700)), 1)
                 .when(col("AVG_UL_RTT_MICRO_SEC").geq(700).and(col("AVG_UL_RTT_MICRO_SEC").lt(1000)), 2)
                 .when(col("AVG_UL_RTT_MICRO_SEC").geq(1000).and(col("AVG_UL_RTT_MICRO_SEC").lt(1400)), 3)
@@ -59,13 +62,21 @@ public class WebTCPSummary extends Summary {
         ds = ds.withColumnRenamed("Protocol_Name", "Protocol");
         ds = ds.withColumnRenamed("Protocol_Category_Name", "Protocol_Category");
         ds = ds.withColumnRenamed("TCP_Connection_Status", "TCP_Connections_Status");
-        ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "15 minutes").getField("start"));
+       ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "15 minutes").getField("start"))
+                .withColumn("RAN",
+                when(col("RAT").equalTo(2), "GERAN")
+                        .when(col("RAT").equalTo(1), "UTRAN")
+                        .when(col("RAT").equalTo(6), "EUTRAN")
+                        .when(col("RAT").isNull().or(col("RAT").equalTo(0)), "not carried")
+                        .otherwise(null)
+        );
 
+        
         ds = aggregateFunc(ds);
         ds = generateKeyHash(ds, new String[]{"Country", "Region", "Province", "City",
                 "BSC_Name", "RNC_Name", "ENODEB_ID", "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "APN",
                 "Protocol", "Long_Down_RTTs", "Long_Up_RTTs","TCP_Connections_Status",
-                "TCP_Connection_Release_Status", "Application_Name", "Protocol_Category"});
+                "TCP_Connection_Release_Status", "Application_Name", "Protocol_Category","Brand_Category","RAN"});
         return ds;
     }
 
@@ -75,7 +86,7 @@ public class WebTCPSummary extends Summary {
                         "BSC_Name", "RNC_Name","ENODEB_ID",
                         "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "APN", "Protocol",
                         "Long_Down_RTTs", "Long_Up_RTTs", "TCP_Connections_Status", "TCP_Connection_Release_Status",
-                        "Application_Name", "Protocol_Category")
+                        "Application_Name", "Protocol_Category","Brand_Category","RAN")
                 .agg(
                         sum("Uplink_Traffic").alias("Uplink_Traffic_Bytes"),
                         sum("Downlink_Traffic").alias("Downlink_Traffic_Bytes"),

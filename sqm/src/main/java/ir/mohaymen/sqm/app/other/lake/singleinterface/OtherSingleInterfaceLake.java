@@ -7,7 +7,7 @@ import ir.mohaymen.sqm.connectors.Source;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.streaming.DataStreamWriter;
-import org.apache.spark.sql.types.DataTypes;
+
 import java.util.Map;
 import static org.apache.spark.sql.functions.*;
 import static java.util.stream.Collectors.joining;
@@ -23,7 +23,7 @@ public class OtherSingleInterfaceLake extends Lake {
     @Override
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return  ds.select("BEGIN_TIME", "BEGIN_TIME_MSEL", "END_TIME", "END_TIME_MSEL", "Protocol_Category_Name",
-                "Protocol_Name", "L7_CARRIER_PROT", "HOST", "INTERFACEID", "RAN_NE_USER_IP", "SGSN_USER_IP",
+                "Protocol_Name", "L7_CARRIER_PROT", "HOST", "INTERFACEID", "RAN_NE_USER_IP", "SGSN_USER_IP","SID" , "table_id",
                 "GGSN_USER_IP", "TCP_CONN_STATES", "IMSI", "MSISDN", "IMEI", "Brand", "Model",
                 "Technology", "Type", "OS", "RAT", "User_Agent", "FST_URI", "Country", "Region",
                 "Province", "City", "VISIT_TYPE", "L4_TYPE", "SGSN", "SGSN_POOL", "GGSN", "SGW", "PGW",
@@ -138,6 +138,7 @@ public class OtherSingleInterfaceLake extends Lake {
                 .withColumnRenamed("L4_UL_GOODPUT", "TCP_Uplink_Payload_Traffic")
                 .withColumnRenamed("L4_DW_GOODPUT", "TCP_Downlink_Payload_Traffic")
                 .withColumnRenamed("FLAG", "Flag")
+                .withColumnRenamed("SID", "Session_ID")
 
                 .withColumnRenamed("L7_CARRIER_PROT", "Layer_7_Bearer_Protocol_Source")
                 .withColumnRenamed("TCP_CONN_STATES", "TCP_Connection_Status_Source")

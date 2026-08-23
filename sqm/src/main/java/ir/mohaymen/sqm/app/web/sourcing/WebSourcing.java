@@ -25,8 +25,7 @@ public class WebSourcing extends Sourcing {
 
     @Override
     protected Dataset<Row> extractColumns(Dataset<Row> ds) {
-//        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
-        return ds;
+        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
     }
 
 
@@ -41,6 +40,7 @@ public class WebSourcing extends Sourcing {
         Dataset<Row> sgsnRef = getReference("sgsnRef");
         Dataset<Row> sgw_pgw_ref = getReference("sgwPgwRef");
         Dataset<Row> protocolRef = getReference("protocolRef");
+        Dataset<Row> apnDashboardRef = references.get("apnDashboardRef");
 
         // ------------------------------- Location -------------------------------
         location4gRef = location4gRef.select("City","Province","region","country","ENODEB_ID",
@@ -86,7 +86,7 @@ public class WebSourcing extends Sourcing {
         location3gRef.persist();
         location2gRef.persist();
 
-
+        apnDashboardRef.persist();
         // ------------------------------- Application -------------------------------
         appRef = appRef.select("Application_ID" , "Application_Name");
         appRef.persist();
@@ -133,7 +133,7 @@ public class WebSourcing extends Sourcing {
                 "new_City", "new_Province", "new_Region", "new_Country", "new_Cell_Name", "BSC_Name",
                 "SITE_Name", "Latitude", "Longitude", "RNC_Name","NodeB_Name", "new_SGSN", "new_SGSN_POOL",
                 "new_GGSN", "new_SGW", "new_PGW", "Protocol_Name","Protocol_Category_Name", "Application_Name",
-                "VENDOR" , "new_AZIMUTH", "ENODEB_ID"};
+                "VENDOR" , "new_AZIMUTH", "ENODEB_ID","APN_Edit"};
 
         String[] selectedColumns = ArrayUtil.add(cols, addedCols);
 
@@ -215,6 +215,8 @@ public class WebSourcing extends Sourcing {
         Column sgwCondRat6 = ((ds.col("RAT").equalTo(lit(6))).and(ds.col("SGSN_User_Plane_IP_Address").equalTo(col("sgwRef.ip"))));
         Column pgwCondRat6 = ((ds.col("RAT").equalTo(lit(6))).and(ds.col("GGSN_User_Plane_IP_Address").equalTo(col("pgwRef.ip"))));
 
+        ds = applyAPNStandardization(ds);
+        Column apnDashboardRefCond = ds.col("APN").equalTo(apnDashboardRef.col("value"));
 
         ds = ds.join(broadcast(appRef.as("appRef")), appCond, "leftouter")
                 .join(broadcast(deviceRef.as("deviceRef")),deviceCond,"leftouter")
@@ -228,7 +230,7 @@ public class WebSourcing extends Sourcing {
                 .join(broadcast(ggsnRef.as("ggsnRef3")), ggsnCondRat1, "leftouter")
                 .join(broadcast(sgwRef.as("sgwRef")), sgwCondRat6, "leftouter")
                 .join(broadcast(pgwRef.as("pgwRef")), pgwCondRat6, "leftouter")
-
+                .join(broadcast(apnDashboardRef.as("apnDashboardRef")), apnDashboardRefCond, "leftouter")
                 //App
                 .withColumn("Application_Name", coalesce(appRef.col("Application_Name").cast(DataTypes.StringType), lit("Unknown")))
 
@@ -270,7 +272,10 @@ public class WebSourcing extends Sourcing {
                 .withColumn("new_GGSN", coalesce(col("ggsnRef2.GGSN"),col("ggsnRef3.GGSN")))
                 .withColumn("new_SGW", col("sgwRef.SGW"))
                 .withColumn("new_PGW", col("pgwRef.PGW"))
-
+                .withColumn("APN_Edit",
+                        coalesce(when(apnDashboardRef.col("value").isNotNull(), ds.col("APN"))
+                                .otherwise(lit("Unknown")), lit("Unknown"))
+                )
                 .selectExpr(selectedColumns)
                 .withColumnRenamed("new_City","City")
                 .withColumnRenamed("new_Province","Province")
@@ -283,7 +288,18 @@ public class WebSourcing extends Sourcing {
                 .withColumnRenamed("new_GGSN","GGSN")
                 .withColumnRenamed("new_SGW","SGW")
                 .withColumnRenamed("new_PGW","PGW");
+                
+                ds = ds.withColumn("APN", coalesce(col("APN"), lit("Unknown")))
+                .withColumn("City", coalesce(col("City"), lit("Unknown")))
+                .withColumn("Province", coalesce(col("Province"), lit("Unknown")))
+                .withColumn("Region", coalesce(col("Region"), lit("Unknown")))
+                .withColumn("Country", coalesce(col("Country"), lit("Unknown")));
 
+                // RAT Unknown condition
+                ds = ds.withColumn("ENODEB_ID", when(col("RAT").equalTo(6), coalesce(col("ENODEB_ID"), lit("Unknown"))).when(col("RAT").isNull(), lit("Unknown")))
+                .withColumn("RNC_Name", when(col("RAT").equalTo(1), coalesce(col("RNC_Name"), lit("Unknown"))))
+                .withColumn("BSC_Name", when(col("RAT").equalTo(2), coalesce(col("BSC_Name"), lit("Unknown"))));
+        ds.printSchema();
         return ds;
     }
 
@@ -293,4 +309,74 @@ public class WebSourcing extends Sourcing {
         dw = dw.partitionBy("day");
         return dw;
     }
+
+
+    private Dataset<Row> applyAPNStandardization(Dataset<Row> ds){
+        Column cleanAPN = col("APN");
+        // remove control chars
+        cleanAPN = regexp_replace(cleanAPN,
+                "[\\x00-\\x1F\\x7F-\\x9F]", "");
+        // remove unwanted patterns
+        String[] patterns = {
+                "MNC\\d{2,3}",
+                "MCC\\d{2,3}",
+                "GPRS[\\?O]?",
+                "\\d{2,3}",
+                "IPV[46]",
+                "INTERNET",
+                "V\\d+(\\.\\d+)?"
+        };
+
+        for (String p : patterns) {
+            cleanAPN = regexp_replace(cleanAPN, "(?i)" + p, " ");
+        }
+        // replace special chars with dot
+        cleanAPN = regexp_replace(cleanAPN,
+                "[@،;:|/\\\\$#&*()\\[\\]{}~`\\-_+=><]", ".");
+
+        // replace non-alphanumeric except dot
+        cleanAPN = regexp_replace(cleanAPN,
+                "[^a-zA-Z0-9\\.]", ".");
+
+        // lowercase
+        cleanAPN = lower(cleanAPN);
+// Normalize whitespace first (important!)
+        cleanAPN = regexp_replace(cleanAPN, "\\s+", " ");
+        cleanAPN = trim(cleanAPN);
+
+// Convert spaces to dots
+        cleanAPN = regexp_replace(cleanAPN, " ", ".");
+        // collapse multiple dots
+        cleanAPN = regexp_replace(cleanAPN, "\\.+", ".");
+
+        // trim dots
+        cleanAPN = regexp_replace(cleanAPN, "^\\.|\\.$", "");
+        Column parts = split(cleanAPN, "\\.");
+
+
+        // remove single-character segments
+        // Column filteredParts_old = expr(
+        //         "filter(" +
+        //                 "split(" + cleanAPN.expr().sql() + ", '\\\\.'), " +
+        //                 "x -> length(x) > 1" +
+        //                 ")"
+        // );
+        Column filteredParts =
+                filter(
+                        split(cleanAPN, "\\."),
+                        x -> length(x).gt(lit(1))
+                );
+        // 1️⃣0️⃣ Rebuild APN
+        Column rebuilt = concat_ws(".", filteredParts);
+
+        // 1️⃣1️⃣ Remove duplicate suffixes (.mci.mci → .mci)
+        rebuilt = regexp_replace(rebuilt, "(\\.mci)+", ".mci");
+        rebuilt = regexp_replace(rebuilt, "(\\.irancell)+", ".irancell");
+
+        ds = ds.withColumn("APN", rebuilt);
+
+        return ds;
+    }
 }
+//
+

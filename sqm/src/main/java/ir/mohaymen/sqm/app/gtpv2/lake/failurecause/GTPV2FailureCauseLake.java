@@ -40,6 +40,7 @@ public class GTPV2FailureCauseLake extends Lake {
 
     @Override
     protected DataStreamWriter<Row> partitionData(DataStreamWriter<Row> ds) {
-        return ds.partitionBy("day", "hour", "minute_15");
+        return ds;
     }
 }
+

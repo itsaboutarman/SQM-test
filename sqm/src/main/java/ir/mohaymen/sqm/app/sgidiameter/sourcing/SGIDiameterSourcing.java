@@ -17,7 +17,7 @@ import java.util.Map;
 
 import static org.apache.spark.sql.functions.*;
 
-
+@Job
 public class SGIDiameterSourcing extends Sourcing {
     public SGIDiameterSourcing(Source source, Sink sink, Map<String, Dataset<Row>> references) {
         super(source, sink, references);
@@ -25,8 +25,7 @@ public class SGIDiameterSourcing extends Sourcing {
 
     @Override
     protected Dataset<Row> extractColumns(Dataset<Row> ds) {
-//        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
-        return ds;
+        return FormatConverter.fromCSV(ds, Schema.getSchema(), "|");
     }
 
     @Override
@@ -130,7 +129,7 @@ public class SGIDiameterSourcing extends Sourcing {
 
         // ------------------------------- mnc mcc -------------------------------
 
-
+       
 
         Column mccMncCondVisited = ds.col("MCC_int").equalTo(mccMncRefVisited.col("Visited_MCC_ref_int"))
                 .and(
@@ -138,11 +137,11 @@ public class SGIDiameterSourcing extends Sourcing {
                 );
 
         Column mccMncCond = col("HOMEMCC").cast(DataTypes.IntegerType)
-                .equalTo(col("MCC_MNC_ref.MCC_Ref").cast(DataTypes.IntegerType))
-                .and(
-                        col("HOMEMNC").cast(DataTypes.IntegerType)
-                                .equalTo(col("MCC_MNC_ref.MNC_Ref").cast(DataTypes.IntegerType))
-                );
+                        .equalTo(col("MCC_MNC_ref.MCC_Ref").cast(DataTypes.IntegerType))
+                        .and(
+                                col("HOMEMNC").cast(DataTypes.IntegerType)
+                                        .equalTo(col("MCC_MNC_ref.MNC_Ref").cast(DataTypes.IntegerType))
+                        );
 
         ds = ds.join(broadcast(deviceRef.as("deviceRef")),deviceCond,"leftouter")
                 .join(broadcast(sgsnRef.as("sgsnRef2")), sgsnCondRat2, "leftouter")

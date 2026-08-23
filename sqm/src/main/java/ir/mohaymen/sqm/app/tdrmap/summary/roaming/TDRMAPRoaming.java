@@ -19,7 +19,6 @@ public class TDRMAPRoaming extends Summary {
         super(source, sink, reference);
     }
 
-
     @Override
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select(
@@ -70,3 +69,5 @@ public class TDRMAPRoaming extends Summary {
         return ds;
     }
 }
+
+

@@ -8,7 +8,7 @@ import org.apache.spark.sql.streaming.StreamingQuery;
 import java.util.concurrent.TimeoutException;
 
 public interface App {
-     Dataset<Row> read();
+     Dataset<Row> read() throws Exception;
      Dataset<Row> process(Dataset<Row> ds) throws Exception;
      DataStreamWriter<Row> write(Dataset<Row> ds) throws TimeoutException;
 

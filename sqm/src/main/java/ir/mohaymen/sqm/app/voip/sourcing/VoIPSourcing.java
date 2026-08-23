@@ -281,13 +281,12 @@ public class VoIPSourcing extends Sourcing {
         return dw;
     }
 
-    private Dataset<Row> applyAPNStandardization(Dataset<Row> ds){
+     private Dataset<Row> applyAPNStandardization(Dataset<Row> ds){
         Column cleanAPN = col("APN");
         // remove control chars
         cleanAPN = regexp_replace(cleanAPN,
                 "[\\x00-\\x1F\\x7F-\\x9F]", "");
-
-        // remove unwanted patterns like MNC, MCC, ...
+        // remove unwanted patterns
         String[] patterns = {
                 "MNC\\d{2,3}",
                 "MCC\\d{2,3}",
@@ -301,7 +300,6 @@ public class VoIPSourcing extends Sourcing {
         for (String p : patterns) {
             cleanAPN = regexp_replace(cleanAPN, "(?i)" + p, " ");
         }
-
         // replace special chars with dot
         cleanAPN = regexp_replace(cleanAPN,
                 "[@،;:|/\\\\$#&*()\\[\\]{}~`\\-_+=><]", ".");
@@ -312,14 +310,12 @@ public class VoIPSourcing extends Sourcing {
 
         // lowercase
         cleanAPN = lower(cleanAPN);
-
-        // Normalize whitespace first (important!)
+// Normalize whitespace first (important!)
         cleanAPN = regexp_replace(cleanAPN, "\\s+", " ");
         cleanAPN = trim(cleanAPN);
 
-        // Convert spaces to dots
+// Convert spaces to dots
         cleanAPN = regexp_replace(cleanAPN, " ", ".");
-
         // collapse multiple dots
         cleanAPN = regexp_replace(cleanAPN, "\\.+", ".");
 
@@ -327,18 +323,24 @@ public class VoIPSourcing extends Sourcing {
         cleanAPN = regexp_replace(cleanAPN, "^\\.|\\.$", "");
         Column parts = split(cleanAPN, "\\.");
 
-        // remove single-character segments
-        Column filteredParts = expr(
-                "filter(" +
-                        "split(" + cleanAPN + ", '\\\\.'), " +
-                        "x -> length(x) > 1" +
-                        ")"
-        );
 
-        // Rebuild APN
+        // remove single-character segments
+        // Column filteredParts_old = expr(
+        //         "filter(" +
+        //                 "split(" + cleanAPN.expr().sql() + ", '\\\\.'), " +
+        //                 "x -> length(x) > 1" +
+        //                 ")"
+        // );
+        Column filteredParts =
+                filter(
+                        split(cleanAPN, "\\."),
+                        x -> length(x).gt(lit(1))
+                );
+
+        // 1️⃣0️⃣ Rebuild APN
         Column rebuilt = concat_ws(".", filteredParts);
 
-        // Remove duplicate suffixes (.mci.mci → .mci)
+        // 1️⃣1️⃣ Remove duplicate suffixes (.mci.mci → .mci)
         rebuilt = regexp_replace(rebuilt, "(\\.mci)+", ".mci");
         rebuilt = regexp_replace(rebuilt, "(\\.irancell)+", ".irancell");
 
@@ -347,9 +349,9 @@ public class VoIPSourcing extends Sourcing {
         // =========================
         // Extract APN Group
         // =========================
-        //   ds.show(100);
-//        String domainsRegex = "^(mci|irancell|mtn|rightel|tci|tat|ir|com|net|org)$";
-//
+     //   ds.show(100);
+     //   String domainsRegex = "^(mci|irancell|mtn|rightel|tci|tat|ir|com|net|org)$";
+
 //        Column apnGroup =
 //                element_at(
 //                        expr("filter(split(clean_APN,'\\\\.'), x -> NOT x RLIKE '" + domainsRegex + "')"),
@@ -359,7 +361,7 @@ public class VoIPSourcing extends Sourcing {
 //        ds = ds.withColumn("apn_group",
 //                when(apnGroup.isNotNull(), apnGroup)
 //                        .otherwise(element_at(split(col("clean_APN"), "\\."), 1))
-//         );
+       // );
 
         return ds;
     }

@@ -1,4 +1,4 @@
-package ir.mohaymen.sqm.app.other.summary.tcp;
+package ir.mohaymen.sqm.app.streaming.summary.tcp;
 
 import ir.mohaymen.sqm.app.Summary;
 import ir.mohaymen.sqm.connectors.Sink;
@@ -22,7 +22,7 @@ public class StreamingTCPSummary extends Summary {
     @Override
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("RECORD_DATE", "Country", "Region", "Province", "City",
-                "BSC_Name", "RNC_Name","ENODEB_ID",
+                "BSC_Name", "RNC_Name","ENODEB_ID","Brand",
                 "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL",
                 "RAT", "APN_Edit", "Protocol_Name", "AVG_DW_RTT", "AVG_UL_RTT", "TCP_CONN_STATES", "TCP_STATES",
                 "Application_Name", "Protocol_Category_Name", "L4_UL_THROUGHPUT", "L4_DW_THROUGHPUT",
@@ -57,14 +57,24 @@ public class StreamingTCPSummary extends Summary {
         ds = ds.withColumnRenamed("Protocol_Name", "Protocol")
                 .withColumnRenamed("Protocol_Category_Name", "Protocol_Category")
                 .withColumnRenamed("TCP_CONN_STATES", "TCP_Connections_Status");
+        ds = ds.withColumn("Brand_Category" ,when(col("Brand").isin("SAMSUNG","XIAOMI" , "APPLE", "Unknown"),
+                when(col("Brand").isin("SAMSUNG","XIAOMI" , "APPLE"),lit("Common")).otherwise(lit("Not specified")))
+                .otherwise(lit("Rare")));
 
-        ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "15 minutes").getField("start"));
+        ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "15 minutes").getField("start"))
+                .withColumn("RAN",
+                when(col("RAT").equalTo(2), "GERAN")
+                        .when(col("RAT").equalTo(1), "UTRAN")
+                        .when(col("RAT").equalTo(6), "EUTRAN")
+                        .when(col("RAT").isNull().or(col("RAT").equalTo(0)), "not carried")
+                        .otherwise(null)
+        );
 
         ds = aggregateFunc(ds);
         ds = generateKeyHash(ds, new String[]{"Country", "Region", "Province", "City",
                 "BSC_Name", "RNC_Name", "ENODEB_ID", "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "APN",
                 "Protocol", "Long_Down_RTTs", "Long_Up_RTTs", "TCP_Connections_Status",
-                "TCP_Connection_Release_Status", "Application_Name", "Protocol_Category"});
+                "TCP_Connection_Release_Status", "Application_Name", "Protocol_Category","Brand_Category","RAN"});
         return ds;
     }
 
@@ -73,7 +83,7 @@ public class StreamingTCPSummary extends Summary {
         ds = ds.groupBy("RECORD_DATE", "Country", "Region", "Province", "City",
                         "BSC_Name", "RNC_Name", "ENODEB_ID", "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "APN",
                         "Protocol", "Long_Down_RTTs", "Long_Up_RTTs", "TCP_Connections_Status",
-                        "TCP_Connection_Release_Status", "Application_Name", "Protocol_Category")
+                        "TCP_Connection_Release_Status", "Application_Name", "Protocol_Category","Brand_Category","RAN")
                 .agg(
                         sum("L4_UL_THROUGHPUT").alias("Uplink_Traffic_Bytes"),
                         sum("L4_DW_THROUGHPUT").alias("Downlink_Traffic_Bytes"),

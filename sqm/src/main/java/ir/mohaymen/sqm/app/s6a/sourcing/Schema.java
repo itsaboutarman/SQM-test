@@ -41,8 +41,10 @@ public class Schema extends ir.mohaymen.sqm.app.Schema {
                 .add("ORIGIN_REALM", DataTypes.StringType, true)
                 .add("DESTINATION_HOST", DataTypes.StringType, true)
                 .add("DESTINATION_REALM", DataTypes.StringType, true)
-                .add("col33", DataTypes.StringType, true)
-                .add("col34", DataTypes.StringType, true)
-                .add("col35", DataTypes.StringType, true);
+                .add("STN_SR", DataTypes.IntegerType, true)
+                .add("Probe_ID", DataTypes.IntegerType, true)
+                .add("RESERVED2", DataTypes.IntegerType, true)
+                .add("DCNR_RESTRICT", DataTypes.IntegerType, true)
+                .add("NETWORK_SUPPORT_DCNR", DataTypes.IntegerType, true);
     }
 }

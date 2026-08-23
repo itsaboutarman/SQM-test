@@ -20,12 +20,14 @@ public abstract class Sourcing extends SparkApp
     }
     @Override
     public Dataset<Row> read(){
-        return source.read();
+        Dataset<Row> ds = source.read();
+        ds = extractColumns(ds);
+        return ds;
+
     }
 
     @Override
     public Dataset<Row> process(Dataset<Row> ds){
-        ds = extractColumns(ds);
         ds = analyze(ds);
         return ds;
     }
