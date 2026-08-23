@@ -45,7 +45,7 @@ public class LakeRetentionManager {
     }
 
     public void start() {
-        // setRetentionOnLake();
+        setRetentionOnLake();
         scheduleDeleteAndVacuum();
     }
 

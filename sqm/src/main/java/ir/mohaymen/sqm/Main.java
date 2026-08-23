@@ -49,6 +49,15 @@ public class Main {
                 .addLayers()
                 .build();
 
+        // waiting for initialize lake manager and set retention properties in delta lake:
+        if (app instanceof Sourcing || app instanceof Lake){
+            LakeManager.initialize();
+        }
+        else{
+            Logger.getLogger(Main.class.getName()).info("[Lake Manager] Lake Manager not initialized.");
+        }
+
+
         StatsListener exporter = new StatsListener(configService.getOptions());
         session.streams().addListener(exporter);
         // TODO: Better to be in APP
@@ -56,12 +65,6 @@ public class Main {
         Logger.getLogger(Main.class.getName()).info(
                 String.format("[Lake Manager] Is app Sourcing or Lake? %b", app instanceof Sourcing || app instanceof Lake));
 
-        if (app instanceof Sourcing || app instanceof Lake){
-            LakeManager.initialize();
-        }
-        else{
-            Logger.getLogger(Main.class.getName()).info("[Lake Manager] Lake Manager not initialized.");
-        }
         if (KeepThriftUpdatedListener.shouldKeepThriftUpdated(app, configService.getOptions())){
             KeepThriftUpdatedListener keepThriftUpdatedListener= new KeepThriftUpdatedListener(session, configService.getOptions());
             session.streams().addListener(keepThriftUpdatedListener);
