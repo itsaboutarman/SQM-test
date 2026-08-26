@@ -60,7 +60,7 @@ public class IMSINFCallSIPFailureCauseLake extends Lake {
 
     @Override
     protected DataStreamWriter<Row> partitionData(DataStreamWriter<Row> ds) {
-        return ds.partitionBy("day", "hour","minute_15", "minuteWindow", "Release_Cause_Code");
+       return ds;
     }
 
 
