@@ -27,7 +27,7 @@ public class GTPV2FailureCauseLake extends Lake {
     @Override
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("TABLE_ID", "SID", "PROTOCOL_ID", "INTERFACEID", "IMSI", "MSISDN", "IMEI", "MS_IP", "TMSI",
-                "ROAM_DIRECTION", "HOMEMNC", "RAT", "MCC", "MNC", "LAI", "RAI_TAI",
+                "ROAM_DIRECTION", "HOMEMNC", "HOMEMCC", "RAT", "MCC", "MNC", "LAI", "RAI_TAI",
                 "SAI_CGI_ECGI", "APN", "PROC_TYPE", "MME_IP_Address", "SGW_SIG_IP", "PGW_SIG_IP", "ENODEB_DATA_IP",
                 "SGW_DATA_IP", "PGW_DATA_IP", "ENODEB_DATA_TEID", "MME_SIG_TEID", "SGW_SIG_TEID", "PGW_SIG_TEID",
                 "SGW_DATA_TEID", "PGW_DATA_TEID", "SIG_DIRECTION", "TRANS_TYPE",
@@ -77,8 +77,7 @@ public class GTPV2FailureCauseLake extends Lake {
                         .when(col("ROAM_DIRECTION").equalTo(1), "Outbound")
                         .otherwise(lit("unknown")))
                 .withColumn("INTERFACEID", when(col("INTERFACEID_source").isNull(), lit(null))
-                        .when(col("INTERFACEID_source").equalTo(6).and(col("ROAM_DIRECTION").isNotNull()), "S5")
-                        .when(col("INTERFACEID_source").equalTo(6).and(col("ROAM_DIRECTION").isNull()), "S8")
+                        .when(col("INTERFACEID_source").equalTo(6), "S5/S8")
                         .when(col("INTERFACEID_source").equalTo(5), "S11")
                         .when(col("INTERFACEID_source").equalTo(10), "S3/S10/S16")
                         .when(col("INTERFACEID_source").equalTo(14), "S4/S12")

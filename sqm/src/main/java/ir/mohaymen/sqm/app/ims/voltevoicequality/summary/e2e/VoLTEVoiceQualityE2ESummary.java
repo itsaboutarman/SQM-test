@@ -22,6 +22,7 @@ public class VoLTEVoiceQualityE2ESummary extends Summary {
     @Override
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("RECORD_DATE","Country" , "Region" ,"Province","City","SBC_Media",
+                "City_First", "Province_First", "Region_First", "Country_First",
                 "One-way_Identifier","Uplink_RTP_Packets" ,"Uplink_RTP_Packets_Lost" ,"Downlink_RTP_Packets",
                 "Downlink_RTP_Packets_Lost","Uplink_Integrated_MOS","Downlink_Integrated_MOS");
     }
@@ -31,6 +32,10 @@ public class VoLTEVoiceQualityE2ESummary extends Summary {
     protected Dataset<Row> analyze(Dataset<Row> ds) {
 
         ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "15 minutes").getField("start"));
+        ds = ds.withColumn("City", coalesce(col("City"), col("City_First")))
+                .withColumn("Province", coalesce(col("Province"), col("Province_First")))
+                .withColumn("Region", coalesce(col("Region"), col("Region_First")))
+                .withColumn("Country", coalesce(col("Country"), col("Country_First")));
 
         ds = aggregateFunc(ds);
 

@@ -24,6 +24,7 @@ public class VoLTEVoiceQualityTempSummary extends Summary {
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("RECORD_DATE","Interface"
                 ,"Country" , "Region" , "Province","City",
+                "City_First", "Province_First", "Region_First", "Country_First",
                 "One-way_Identifier","SBC_Media", "Uplink_RTP_Packets","Uplink_RTP_Packets_Lost"
                 ,"Downlink_RTP_Packets","Downlink_RTP_Packets_Lost",
                 "Uplink_Integrated_MOS","Downlink_Integrated_MOS"
@@ -35,7 +36,6 @@ public class VoLTEVoiceQualityTempSummary extends Summary {
 
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {
-
         ds = ds.withColumn("A_SBC",lit(null))
                 .withColumn("P_CSCF",lit((null)))
                 .withColumn("I_CSCF",lit((null)))
@@ -52,6 +52,10 @@ public class VoLTEVoiceQualityTempSummary extends Summary {
         ds = ds.withColumnRenamed("One-way_Identifier","One_way_Identifier")
                 .withColumnRenamed("Interface","Interface_Type");
 
+        ds = ds.withColumn("City", coalesce(col("City"), col("City_First")))
+                .withColumn("Province", coalesce(col("Province"), col("Province_First")))
+                .withColumn("Region", coalesce(col("Region"), col("Region_First")))
+                .withColumn("Country", coalesce(col("Country"), col("Country_First")));
 
         ds = ds.withColumn("RECORD_DATE", window(col("RECORD_DATE"), "15 minutes").getField("start"));
 

@@ -28,14 +28,14 @@ public class GTPV0V1FailureCauseLake extends Lake {
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
 
         return ds.select("TABLE_ID", "SID", "PROTOCOL_ID", "INTERFACEID", "IMSI", "MSISDN", "IMEI", "MS_IP", "PTMSI",
-                "ROAM_DIRECTION", "HOMEMCC", "RAT", "MCC", "MNC", "LAI", "RAI_TAI",
+                "ROAM_DIRECTION", "HOMEMNC", "HOMEMCC", "RAT", "MCC", "MNC", "LAI", "RAI_TAI",
                 "SAI_CGI_ECGI", "APN", "PROC_TYPE", "SGSN_SIG_IP", "GGSN_SIG_IP", "SGSN_DATA_IP", "GGSN_DATA_IP",
                 "SGSN_SIG_TEID", "GGSN_SIG_TEID", "SGSN_DATA_TEID", "GGSN_DATA_TEID", "oldSGSN_SIG_TEID",
                 "oldSGSN_SIG_IP", "TRANS_TYPE", "SIG_DIRECTION", "TRANS_REQ_TIME_SEC",
                 "TRANS_REQ_TIME_MSEC", "TRANS_RSP_TIME_SEC", "TRANS_RSP_TIME_MSEC", "TRANS_SUCCED_FLAG",
                 "TRANS_CAUSE", "ACT_TYPE", "NSAPI", "UL_VOLOME", "DL_VOLOME", "MBR_DL_NEG",
                 "MBR_UL_NEG", "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "SV", "PDP_TYPE", "MS_IP2",
-                "RECORD_DATE_TEHRAN", "TAC", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
+                "RECORD_DATE_TEHRAN","RECORD_DATE", "TAC", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
                 "Home_Region", "Home_Country", "Home_Operator", "Home_Roaming_Type", "Brand", "Model", "Technology",
                 "Type", "OS");
 
@@ -44,7 +44,7 @@ public class GTPV0V1FailureCauseLake extends Lake {
     @Override
     protected Dataset<Row> manipulateData(Dataset<Row> ds) {
         ds = ds.where(col("INTERFACEID").isin(1, 13)
-                .and(col("TRANS_SUCCED_FLAG").equalTo(1)))
+                        .and(col("TRANS_SUCCED_FLAG").equalTo(1)))
                 .drop("offset")
                 .drop("partition")
                 .drop("timestamp")
@@ -91,20 +91,7 @@ public class GTPV0V1FailureCauseLake extends Lake {
                 )
                 .withColumn("INTERFACEID",
                         when(col("INTERFACEID_source").isNull(), lit(null))
-                                .when(
-                                        col("INTERFACEID_source").equalTo(1)
-                                                .and(col("ROAM_DIRECTION").isNotNull()),
-                                        lit("Gn")
-                                )
-                                .when(
-                                        col("INTERFACEID_source").equalTo(1)
-                                                .and(col("ROAM_DIRECTION").isNull()),
-                                        lit("Gp")
-                                )
-                                .when(
-                                        col("INTERFACEID_source").equalTo(13),
-                                        lit("unknown")
-                                )
+                                .when(col("INTERFACEID_source").equalTo(1), lit("Gp/Gn"))
                                 .otherwise(lit("unknown"))
                 );
 
