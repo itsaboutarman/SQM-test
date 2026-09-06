@@ -60,7 +60,7 @@ public class IMSINFCallSIPFailureCauseLake extends Lake {
 
     @Override
     protected DataStreamWriter<Row> partitionData(DataStreamWriter<Row> ds) {
-       return ds;
+        return ds;
     }
 
 

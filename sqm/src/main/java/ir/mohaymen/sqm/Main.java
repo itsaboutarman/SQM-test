@@ -75,17 +75,19 @@ public class Main {
         session.sparkContext().addSparkListener(listener);
         session.streams().addListener(listener.getStreamingListener());
 
-        // TODO: Better to be in APP
-        StreamingQuery query = app.run();
-        Logger.getLogger(Main.class.getName()).info(
-                String.format("[Lake Manager] Is app Sourcing or Lake? %b", app instanceof Sourcing || app instanceof Lake));
-
         if (app instanceof Sourcing || app instanceof Lake){
             LakeManager.initialize();
         }
         else{
             Logger.getLogger(Main.class.getName()).info("[Lake Manager] Lake Manager not initialized.");
         }
+        
+        // TODO: Better to be in APP
+        StreamingQuery query = app.run();
+        Logger.getLogger(Main.class.getName()).info(
+                String.format("[Lake Manager] Is app Sourcing or Lake? %b", app instanceof Sourcing || app instanceof Lake));
+
+       
         if (KeepThriftUpdatedListener.shouldKeepThriftUpdated(app, configService.getOptions())){
             KeepThriftUpdatedListener keepThriftUpdatedListener= new KeepThriftUpdatedListener(session, configService.getOptions());
             session.streams().addListener(keepThriftUpdatedListener);

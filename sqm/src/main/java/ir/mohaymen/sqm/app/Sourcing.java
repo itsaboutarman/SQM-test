@@ -50,3 +50,4 @@ public abstract class Sourcing extends SparkApp
     protected abstract Dataset<Row> analyze(Dataset<Row> ds);
     protected abstract DataStreamWriter<Row> partitionData(DataStreamWriter<Row> ds);
 }
+

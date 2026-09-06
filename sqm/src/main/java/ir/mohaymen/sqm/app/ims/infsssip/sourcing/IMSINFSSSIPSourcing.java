@@ -1,4 +1,4 @@
-package ir.mohaymen.sqm.app.ims.infcallsip.sourcing;
+package ir.mohaymen.sqm.app.ims.infsssip.sourcing;
 import ir.mohaymen.sqm.app.Job;
 import ir.mohaymen.sqm.app.Sourcing;
 import ir.mohaymen.sqm.connectors.Sink;

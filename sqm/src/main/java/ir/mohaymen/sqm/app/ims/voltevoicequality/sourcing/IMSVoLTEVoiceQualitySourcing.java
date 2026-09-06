@@ -29,74 +29,76 @@ public class IMSVoLTEVoiceQualitySourcing extends Sourcing {
 
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {
-        Dataset<Row> locationRef = references.get("locationRef");
+        Dataset<Row> locationRefFisrt = references.get("locationRef");
+        Dataset<Row> locationRefLast = references.get("locationRef");
         Dataset<Row> mediaRef0 = references.get("mediaRef");
 
-        locationRef = locationRef.select("ECGI", "City", "Province", "Region", "Country", "ENodeB_Name", "CELL_Name", "LAT", "LNG")
-                .withColumnRenamed("LAT", "Latitude")
-                .withColumnRenamed("LNG", "Longitude")
-                .withColumn("ECGI_1",
-                        (split(col("ECGI"), "-").getItem(0).cast(DataTypes.IntegerType)))
-                .withColumn("ECGI_2",
-                        (split(col("ECGI"), "-").getItem(1).cast(DataTypes.IntegerType)))
-                .withColumn("ECGI_3",
-                        lower(hex(split(col("ECGI"), "-").getItem(2).cast(DataTypes.IntegerType))))
-                .withColumn("ECGI_4",
-                        lower(hex(split(col("ECGI"), "-").getItem(3).cast(DataTypes.IntegerType))))
-                .drop("ECGI");
+        // ------------------------------- Location -------------------------------
+        locationRefFisrt = locationRefFisrt.select("ECGI", "CELL_Name", "SITE_NAME", "City", "Province", "Region", "Country")
+                .withColumnRenamed("ECGI", "ECGI_Ref_First")
+                .withColumnRenamed("CELL_Name", "CELL_Name_First")
+                .withColumnRenamed("SITE_NAME", "SITE_NAME_First")
+                .withColumnRenamed("City", "City_First")
+                .withColumnRenamed("Province", "Province_First")
+                .withColumnRenamed("Region", "Region_First")
+                .withColumnRenamed("Country", "Country_First");
 
-        locationRef.persist();
+        locationRefFisrt.persist();
 
+        locationRefLast = locationRefLast.select("ECGI", "CELL_Name", "SITE_NAME", "City", "Province", "Region", "Country")
+                .withColumnRenamed("ECGI", "ECGI_Ref_Last")
+                .withColumnRenamed("CELL_Name", "CELL_Name_Last")
+                .withColumnRenamed("SITE_NAME", "SITE_NAME_Last")
+                .withColumnRenamed("City", "City_Last")
+                .withColumnRenamed("Province", "Province_Last")
+                .withColumnRenamed("Region", "Region_Last")
+                .withColumnRenamed("Country", "Country_Last");
+
+        locationRefLast.persist();
+
+        // ------------------------------- Media -------------------------------
         mediaRef0 = mediaRef0.withColumnRenamed("Entity_Name" ,"SBC_Media0");
         Dataset<Row> mediaRef1 = mediaRef0.withColumnRenamed("IP","IP1")
-        .withColumnRenamed("SBC_Media0","SBC_Media1");
+                .withColumnRenamed("SBC_Media0", "SBC_Media1");
 
         mediaRef0.persist();
         mediaRef1.persist();
+
+        // ------------------------------- Partition Column -------------------------------
         ds = ds.withColumn("RECORD_DATE", from_unixtime(col("Start_Time_s")))
                 .withColumn("RECORD_DATE", to_timestamp(col("RECORD_DATE"), "yyyy-MM-dd HH:mm:ss"));
         ds = ds.withColumn("day", window(col("RECORD_DATE"), "1 day").getField("start"));
         ds = ds.withColumn("RECORD_DATE_TEHRAN", col("RECORD_DATE").plus(expr("INTERVAL 3 HOURS 30 MINUTES")));
 
-        ds = ds.withColumn("First_ECGI_1", substring(ds.col("First_ECGI"), 1, 3))
-                .withColumn("First_ECGI_2", substring(ds.col("First_ECGI"), 4, 2))
-                .withColumn("First_ECGI_3",(substring(ds.col("First_ECGI"), 6, 5)))
-                .withColumn("First_ECGI_4", substring(ds.col("First_ECGI"), 11, 2));
+        // ------------------------------- CONDITION: Location -------------------------------
+        Column locationCondFirst = ds.col("First_ECGI").isNotNull()
+                .and(length(ds.col("First_ECGI")).equalTo(12))
+                .and(ds.col("First_ECGI").equalTo(col("locationRefFirst.ECGI_Ref_First")));
+
+        Column locationCondLast = ds.col("Last_ECGI").isNotNull()
+                .and(length(ds.col("Last_ECGI")).equalTo(12))
+                .and(ds.col("Last_ECGI").equalTo(col("locationRefLast.ECGI_Ref_Last")));
+
+        // ------------------------------- CONDITION: Media -------------------------------
+        Column mediaCond0 = ds.col("Call_Identity").equalTo(0).and(ds.col("Destination_IP").equalTo(mediaRef0.col("IP")));
+        Column mediaCond1 = ds.col("Call_Identity").equalTo(1).and(ds.col("Source_IP").equalTo(mediaRef1.col("IP1")));
 
 
-        Column locationCond = ds.col("First_ECGI").isNotNull()
-                .and(ds.col("First_ECGI_1").equalTo(col("locationRef.ECGI_1")))
-                .and(ds.col("First_ECGI_2").equalTo(col("locationRef.ECGI_2")))
-                .and(ds.col("First_ECGI_3").equalTo(col("locationRef.ECGI_3")))
-                .and(ds.col("First_ECGI_4").equalTo(col("locationRef.ECGI_4")));
-
-        Column mediaCond0 = ds.col("Call_Identity").equalTo(0)
-                .and(
-                        ds.col("Destination_IP").equalTo(mediaRef0.col("IP"))
-                );
-
-        Column mediaCond1 = ds.col("Call_Identity").equalTo(1)
-                .and(
-                        ds.col("Source_IP").equalTo(mediaRef1.col("IP1"))
-                );
-        ds = ds.join(broadcast(locationRef).alias("locationRef") ,locationCond , "leftouter")
+        ds = ds.join(broadcast(locationRefFisrt).alias("locationRefFirst"), locationCondFirst, "leftouter")
+                .join(broadcast(locationRefLast).alias("locationRefLast"), locationCondLast, "leftouter")
                 .join(broadcast(mediaRef0).alias("mediaRef0") ,mediaCond0 , "leftouter")
                 .join(broadcast(mediaRef1).alias("mediaRef1") ,mediaCond1 , "leftouter")
+
                 .withColumn("SBC_Media" , coalesce(mediaRef0.col("SBC_Media0") , mediaRef1.col("SBC_Media1") , lit("unknown")))
-                .drop("First_ECGI_1")
-                .drop("First_ECGI_2")
-                .drop("First_ECGI_3")
-                .drop("First_ECGI_4")
-                .drop("ECGI_1")
-                .drop("ECGI_2")
-                .drop("ECGI_3")
-                .drop("ECGI_4")
+                .drop("ECGI_Ref_First")
+                .drop("ECGI_Ref_Last")
                 .drop("SBC_Media0")
                 .drop("SBC_Media1")
                 .drop("IP")
                 .drop("IP1");
         return ds;
     }
+
     @Override
     protected DataStreamWriter<Row> partitionData(DataStreamWriter<Row> ds) {
         return ds.partitionBy("day");

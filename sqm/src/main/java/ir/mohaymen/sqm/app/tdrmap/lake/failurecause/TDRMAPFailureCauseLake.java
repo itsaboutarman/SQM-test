@@ -57,7 +57,7 @@ public class TDRMAPFailureCauseLake extends Lake {
 
                 .withColumn("SRVSTAT", when(col("SRVSTAT_source").isNull(), lit(null))
                         .when(col("SRVSTAT_source").equalTo(0), "Successful")
-                        .when(col("SRVSTAT_source").equalTo(1), "Successful")
+                        .when(col("SRVSTAT_source").equalTo(1), "Failed")
                         .otherwise(lit("unknown")))
 
                 .withColumn("ROAM_DIRECTION_Label", when(col("ROAM_DIRECTION").isNull(), lit(null))
