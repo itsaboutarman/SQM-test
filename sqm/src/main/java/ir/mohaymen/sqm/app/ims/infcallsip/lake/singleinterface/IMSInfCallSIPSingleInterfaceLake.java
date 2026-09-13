@@ -60,7 +60,7 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 "First_Failure_NE_IP_Address", "First_Failure_NE_Type", "First_Failure_Time",
                 "Home_Network_Domain", "Private_Identity_in_SIP_URI_Format", "Public_Identity_in_SIP_URI_Format",
                 "Q_850_Failure_Cause_Code", "TEL_URI_Called_Party_Address_Type",
-                "TEL_URI_Calling_Address_Type", "TEL_URI_Dialing_Number_Type", "Session_id"
+                "TEL_URI_Calling_Address_Type", "TEL_URI_Dialing_Number_Type", "Session_id", "Association_id"
                 );     
     }
 
@@ -72,6 +72,7 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
                 .withColumn("Original_Called_Party_IMSI", lit(null).cast(DataTypes.StringType));
 
         ds = ds.withColumnRenamed("Session_id","Session_ID")
+                .withColumnRenamed("Association_id","Association_ID")
                 .withColumnRenamed("Source_NE_IP_Address", "Source_NE_IP")
                 .withColumnRenamed("Destination_NE_IP_Address", "Destination_NE_IP")
                 .withColumnRenamed("Private_Identity_in_TEL_URI_Format", "IMSI" )
