@@ -10,11 +10,17 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.streaming.DataStreamWriter;
 import org.apache.spark.sql.types.DataTypes;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+
 import static org.apache.spark.sql.functions.*;
 import static org.apache.spark.sql.functions.lit;
 @Job
 public class IMSINFCallSIPSourcing extends Sourcing {
+        
+    private static final int MV_MAX_PIECES = 3;
+    
     public IMSINFCallSIPSourcing(Source source, Sink sink, Map<String, Dataset<Row>> references) {
         super(source, sink, references);
     }
@@ -147,6 +153,38 @@ public class IMSINFCallSIPSourcing extends Sourcing {
                 .drop("MNC")
                 .drop("LAC")
                 .drop("SAC_CC");
+                                
+
+        Column mvPieces = split(coalesce(col("Multi-Vender_Cause"), lit("")), ",(?=(?:SIP|Q\\.850);)");
+
+        List<Column> mvQ850Candidates = new ArrayList<>();
+        List<Column> mvSipCandidates = new ArrayList<>();
+        List<Column> mvTextCandidates = new ArrayList<>();
+
+        for (int i = 1; i <= MV_MAX_PIECES; i++) {
+            Column piece = when(size(mvPieces).geq(i), element_at(mvPieces, i)).otherwise(lit(""));
+
+            Column q850Raw = regexp_extract(piece, "Q\\.850;cause=(\\d+)", 1);
+            Column sipRaw  = regexp_extract(piece, "SIP;cause=(\\d+)", 1);
+            Column isCode  = q850Raw.notEqual("").or(sipRaw.notEqual(""));
+
+            mvQ850Candidates.add(when(q850Raw.equalTo(""), lit(null)).otherwise(q850Raw));
+            mvSipCandidates.add(when(sipRaw.equalTo(""), lit(null)).otherwise(sipRaw));
+
+            Column cleaned = trim(regexp_replace(
+                    regexp_replace(
+                            regexp_replace(piece, "^.*--", ""),
+                            "^(?:SIP;text=)?(?:\\d+\\s+)?(?:[\\w\\-]+\\.){3,}[\\w\\-]+\\s+", ""),
+                    "^SIP;text=(?:\\d+\\s+)?", ""));
+
+            mvTextCandidates.add(when(isCode.or(cleaned.equalTo("")), lit(null)).otherwise(cleaned));
+        }
+
+        ds = ds.withColumn("MV_Q850_Cause", coalesce(mvQ850Candidates.toArray(new Column[0])))
+                .withColumn("MV_SIP_Cause", coalesce(mvSipCandidates.toArray(new Column[0])))
+                .withColumn("MV_Text", coalesce(mvTextCandidates.toArray(new Column[0])))
+                .drop("Multi-Vender_Cause");
+
 
         return ds;
     }

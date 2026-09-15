@@ -3,10 +3,13 @@ package ir.mohaymen.sqm.app.ims.infcallsip.summary.analysistemp;
 import ir.mohaymen.sqm.app.Summary;
 import ir.mohaymen.sqm.connectors.Sink;
 import ir.mohaymen.sqm.connectors.Source;
+
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.Column;
 
 import java.util.Map;
+
 import ir.mohaymen.sqm.app.Job;
 import static org.apache.spark.sql.functions.*;
 import static org.apache.spark.sql.functions.abs;
@@ -16,6 +19,7 @@ import static org.apache.spark.sql.functions.when;
 
 @Job
 public class IMSInfCallSIPAnalysisTempSummary extends Summary {
+    
     public IMSInfCallSIPAnalysisTempSummary(Source source, Sink sink, Map<String, Dataset<Row>> reference) {
         super(source, sink, reference);
     }
@@ -26,7 +30,7 @@ public class IMSInfCallSIPAnalysisTempSummary extends Summary {
                 "Access_Type", "Calling_or_Called_Party_Indicator", "Country", "RegionName", "ProvinceName", "CityName",
                 "Session_Interruption_Flag", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
                 "End_Time_ms", "Call_Duration_s", "Call_Ringing_Time", "Call_Answer_Time", "Call_Release_Time",
-                "183_Delay", "PRACK_Delay", "PRACK_200_OK_Delay");
+                "183_Delay", "PRACK_Delay", "PRACK_200_OK_Delay", "MV_Q850_Cause", "MV_SIP_Cause", "MV_Text");
     }
 
     @Override
@@ -60,7 +64,8 @@ public class IMSInfCallSIPAnalysisTempSummary extends Summary {
                 "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF", "MRFC", "eMSC", "ATCF", "MSC",
                 "Source_NE_Type", "Destination_NE_Type",
                 "Access_Type", "Calling_or_Called_Party_Indicator", "Country", "Region", "Province", "City",
-                "Session_Interruption_Flag", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code"});
+                "Session_Interruption_Flag", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
+                "MV_Q850_Cause", "MV_SIP_Cause", "MV_Text"});
 
         System.out.println("output schema:");
         ds.printSchema();
@@ -74,7 +79,8 @@ public class IMSInfCallSIPAnalysisTempSummary extends Summary {
                         "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF", "MRFC", "eMSC", "ATCF", "MSC",
                         "Source_NE_Type", "Destination_NE_Type",
                         "Access_Type", "Calling_or_Called_Party_Indicator", "Country", "Region", "Province", "City",
-                        "Session_Interruption_Flag", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code"
+                        "Session_Interruption_Flag", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
+                        "MV_Q850_Cause", "MV_SIP_Cause", "MV_Text"
                 ).agg(
                         sum("TotalCount").alias("TotalCount"),
                         sum("SuccessCount").alias("SuccessCount"),
