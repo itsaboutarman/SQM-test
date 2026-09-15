@@ -22,7 +22,7 @@ public class IMSInfRegisterSIPAnalysisSummaryTemp extends Summary {
     @Override
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("RECORD_DATE", "Table_id", "Registration_Type", "Service_Status",
-                "Interface_Type", "Source_NE_Type", "Source_NE_Name", "Destination_NE_Type", "Destination_NE_Name",
+                "Interface_Type", "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF", "MRFC", "eMSC", "ATCF", "MSC",
                 "Access_Type", "Country", "RegionName", "ProvinceName", "CityName", "Reason_Code",
                 "Release_Cause_Code", "Service_Status", "End_Time_ms");
     }
@@ -39,20 +39,6 @@ public class IMSInfRegisterSIPAnalysisSummaryTemp extends Summary {
         ds = ds.withColumnRenamed("RegionName", "Region")
                 .withColumnRenamed("ProvinceName", "Province")
                 .withColumnRenamed("CityName", "City");
-
-        ds = addColumn(ds, "A_SBC", 1, 1);
-        ds = addColumn(ds, "P_CSCF", 4, 4);
-        ds = addColumn(ds, "I_CSCF", 5, 5);
-        ds = addColumn(ds, "S_CSCF", 8, 8);
-        ds = addColumn(ds, "AS", 9, 9);
-        ds = addColumn(ds, "MGCF", 10, 10);
-        ds = addColumn(ds, "MRFC", 13, 13);
-        ds = addColumn(ds, "HSS", 21, 21);
-        ds = addColumn(ds, "eMSC", 24, 24);
-        ds = addColumn(ds, "ATCF", 25, 25);
-        ds = addColumn(ds, "MSC", 33, 33);
-        ds = ds.drop("Source_NE_Name")
-                .drop("Destination_NE_Name");
 
         ds = aggregateFunc(ds);
         ds = generateKeyHash(ds, new String[]{
@@ -89,23 +75,4 @@ public class IMSInfRegisterSIPAnalysisSummaryTemp extends Summary {
         return ds;
     }
 
-    private static Dataset<Row> addColumn(Dataset<Row> df, String columnName, int sourceCode, int destCode) {
-        return df.withColumn(columnName,
-                when(col("Destination_NE_Type").equalTo(destCode),
-                        when(
-                                col("Destination_NE_Name").isNull()
-                                        .or(col("Destination_NE_Name").equalTo("")),
-                                lit("--")
-                        ).otherwise(col("Destination_NE_Name").cast("string"))
-                )
-                        .when(col("Source_NE_Type").equalTo(sourceCode),
-                                when(
-                                        col("Source_NE_Name").isNull()
-                                                .or(col("Source_NE_Name").equalTo("")),
-                                        lit("--")
-                                ).otherwise(col("Source_NE_Name").cast("string"))
-                        )
-                        .otherwise(lit(null))
-        );
-    }
 }

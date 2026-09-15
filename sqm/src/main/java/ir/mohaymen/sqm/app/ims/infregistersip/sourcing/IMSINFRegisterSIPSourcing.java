@@ -148,6 +148,19 @@ public class IMSINFRegisterSIPSourcing extends Sourcing {
                 .drop("LAC")
                 .drop("CountryName")
                 .drop("SAC_CC");
+
+        ds = addColumn(ds, "A_SBC", 1, 1);
+        ds = addColumn(ds, "P_CSCF", 4, 4);
+        ds = addColumn(ds, "I_CSCF", 5, 5);
+        ds = addColumn(ds, "S_CSCF", 8, 8);
+        ds = addColumn(ds, "AS", 9, 9);
+        ds = addColumn(ds, "MGCF", 10, 10);
+        ds = addColumn(ds, "MRFC", 13, 13);
+        ds = addColumn(ds, "HSS", 21, 21);
+        ds = addColumn(ds, "eMSC", 24, 24);
+        ds = addColumn(ds, "ATCF", 25, 25);
+        ds = addColumn(ds, "MSC", 33, 33);
+
         return ds;
     }
 
@@ -158,5 +171,24 @@ public class IMSINFRegisterSIPSourcing extends Sourcing {
         return dw;
     }
 
+    private static Dataset<Row> addColumn(Dataset<Row> df, String columnName, int sourceCode, int destCode) {
+        return df.withColumn(columnName,
+                when(col("Destination_NE_Type").equalTo(destCode),
+                        when(
+                                col("Destination_NE_Name").isNull()
+                                        .or(col("Destination_NE_Name").equalTo("")),
+                                lit("--")
+                        ).otherwise(col("Destination_NE_Name").cast("string"))
+                )
+                        .when(col("Source_NE_Type").equalTo(sourceCode),
+                                when(
+                                        col("Source_NE_Name").isNull()
+                                                .or(col("Source_NE_Name").equalTo("")),
+                                        lit("--")
+                                ).otherwise(col("Source_NE_Name").cast("string"))
+                        )
+                        .otherwise(lit(null))
+        );
+    }
 
 }
