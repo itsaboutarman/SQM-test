@@ -28,9 +28,10 @@ public class IMSInfCallSIPAnalysisTempSummary extends Summary {
         return ds.select("Table_id", "RECORD_DATE", "Service_Type", "Service_Status", "Interface_Type",
                 "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF", "MRFC", "eMSC", "ATCF", "MSC",
                 "Access_Type", "Calling_or_Called_Party_Indicator", "Country", "RegionName", "ProvinceName", "CityName",
-                "Session_Interruption_Flag", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
+                "Session_Interruption_Flag", "Reason_Protocol", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
                 "End_Time_ms", "Call_Duration_s", "Call_Ringing_Time", "Call_Answer_Time", "Call_Release_Time",
-                "183_Delay", "PRACK_Delay", "PRACK_200_OK_Delay", "MV_Q850_Cause", "MV_SIP_Cause", "MV_Text");
+                "183_Delay", "PRACK_Delay", "PRACK_200_OK_Delay", "MV_Q850_Cause", "MV_SIP_Cause", "MV_Text",
+                "Source_NE_Type", "Destination_NE_Type");
     }
 
     @Override
@@ -49,7 +50,7 @@ public class IMSInfCallSIPAnalysisTempSummary extends Summary {
                 "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF", "MRFC", "eMSC", "ATCF", "MSC",
                 "Source_NE_Type", "Destination_NE_Type",
                 "Access_Type", "Calling_or_Called_Party_Indicator", "Country", "Region", "Province", "City",
-                "Session_Interruption_Flag", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
+                "Session_Interruption_Flag", "Reason_Protocol", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
                 "MV_Q850_Cause", "MV_SIP_Cause", "MV_Text"});
 
         System.out.println("output schema:");
@@ -64,7 +65,7 @@ public class IMSInfCallSIPAnalysisTempSummary extends Summary {
                         "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF", "MRFC", "eMSC", "ATCF", "MSC",
                         "Source_NE_Type", "Destination_NE_Type",
                         "Access_Type", "Calling_or_Called_Party_Indicator", "Country", "Region", "Province", "City",
-                        "Session_Interruption_Flag", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
+                        "Session_Interruption_Flag", "Reason_Protocol", "Reason_Code", "Q_850_Failure_Cause_Code", "Release_Cause_Code",
                         "MV_Q850_Cause", "MV_SIP_Cause", "MV_Text"
                 ).agg(
                         sum("TotalCount").alias("TotalCount"),

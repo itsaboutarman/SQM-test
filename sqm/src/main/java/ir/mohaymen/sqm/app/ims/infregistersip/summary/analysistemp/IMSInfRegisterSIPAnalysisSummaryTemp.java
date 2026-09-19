@@ -23,8 +23,8 @@ public class IMSInfRegisterSIPAnalysisSummaryTemp extends Summary {
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("RECORD_DATE", "Table_id", "Registration_Type", "Service_Status",
                 "Interface_Type", "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF", "MRFC", "eMSC", "ATCF", "MSC",
-                "Access_Type", "Country", "RegionName", "ProvinceName", "CityName", "Reason_Code",
-                "Release_Cause_Code", "Service_Status", "End_Time_ms");
+                "Access_Type", "Country", "RegionName", "ProvinceName", "CityName",  "Reason_Protocol", "Reason_Code",
+                "Release_Cause_Code", "Service_Status", "End_Time_ms","Source_NE_Type", "Destination_NE_Type");
     }
 
 
@@ -44,7 +44,7 @@ public class IMSInfRegisterSIPAnalysisSummaryTemp extends Summary {
         ds = generateKeyHash(ds, new String[]{
                 "Table_id", "Registration_Type", "Service_Status",
                 "Interface_Type", "Source_NE_Type", "Destination_NE_Type",
-                "Access_Type", "Country", "Region", "Province", "City", "Reason_Code",
+                "Access_Type", "Country", "Region", "Province", "City", "Reason_Protocol", "Reason_Code",
                 "Release_Cause_Code", "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF",
                 "MRFC", "eMSC", "ATCF", "MSC"});
 
@@ -59,7 +59,7 @@ public class IMSInfRegisterSIPAnalysisSummaryTemp extends Summary {
         ds = ds.withWatermark("RECORD_DATE", "1440 minutes")
                 .groupBy("RECORD_DATE", "Table_id", "Registration_Type", "Service_Status",
                         "Interface_Type", "Source_NE_Type", "Destination_NE_Type",
-                        "Access_Type", "Country", "Region", "Province", "City", "Reason_Code",
+                        "Access_Type", "Country", "Region", "Province", "City", "Reason_Protocol", "Reason_Code",
                         "Release_Cause_Code", "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF",
                         "MRFC", "eMSC", "ATCF", "MSC")
                 .agg(
