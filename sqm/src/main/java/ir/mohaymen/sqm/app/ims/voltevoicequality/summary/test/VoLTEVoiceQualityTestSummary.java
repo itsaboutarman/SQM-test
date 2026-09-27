@@ -27,7 +27,7 @@ public class VoLTEVoiceQualityTestSummary extends Summary {
                 "Province_Last", "Region_Last", "Country_Last", "One-way_Identifier", "SBC_Media",
                 "Uplink_RTP_Packets", "Uplink_RTP_Packets_Lost", "Downlink_RTP_Packets", "Downlink_RTP_Packets_Lost",
                 "Uplink_Integrated_MOS", "Downlink_Integrated_MOS", "Downlink_RTCP_One-way_Length",
-                "Uplink_RTCP_One-way_Length", "Uplink_RTP_One-way_Length", "Downlink_RTP_One-way_Length");
+                "Uplink_RTCP_One-way_Length", "Uplink_RTP_One-way_Length", "Downlink_RTP_One-way_Length", "Call_Duration_ms");
     }
 
 
@@ -53,14 +53,19 @@ public class VoLTEVoiceQualityTestSummary extends Summary {
                 .withColumn("eMSC", lit(null).cast(DataTypes.StringType))
                 .withColumn("ATCF", lit(null).cast(DataTypes.StringType))
                 .withColumn("MSC", lit(null).cast(DataTypes.StringType))
-                .withColumn("Access_Type", lit(null).cast(DataTypes.StringType));
+                .withColumn("Access_Type", lit(null).cast(DataTypes.StringType))
+                .withColumn("City", col("City_Last"))
+                .withColumn("Province", col("Province_Last"))
+                .withColumn("Region", col("Region_Last"))
+                .withColumn("Country", col("Country_Last"));
 
+        ds = ds.filter(col("Call_Duration_ms").isNotNull());
         ds = aggregateFunc(ds);
         ds = generateKeyHash(ds, new String[]{"Interface_Type", "A_SBC", "P_CSCF", "I_CSCF", "S_CSCF", "HSS", "AS", "MGCF",
                 "MRFC", "eMSC", "ATCF", "MSC", "Access_Type", "CELL_Name_First", "SITE_NAME_First",
                 "City_First", "Province_First", "Region_First", "Country_First", "CELL_Name_Last",
                 "SITE_NAME_Last", "City_Last", "Province_Last", "Region_Last", "Country_Last",
-                "One_way_Identifier", "SBC_Media"});
+                "One_way_Identifier", "SBC_Media","City", "Province", "Region", "Country"});
 
         ds.printSchema();
         return ds;
@@ -73,7 +78,7 @@ public class VoLTEVoiceQualityTestSummary extends Summary {
                         "MRFC", "eMSC", "ATCF", "MSC", "Access_Type", "CELL_Name_First", "SITE_NAME_First",
                         "City_First", "Province_First", "Region_First", "Country_First", "CELL_Name_Last",
                         "SITE_NAME_Last", "City_Last", "Province_Last", "Region_Last", "Country_Last",
-                        "One_way_Identifier", "SBC_Media")
+                        "City", "Province", "Region", "Country", "One_way_Identifier", "SBC_Media")
                 .agg(
                         sum("Uplink_RTP_Packets").alias("Uplink_RTP_Packets"),
                         sum("Uplink_RTP_Packets_Lost").alias("Uplink_RTP_Packets_Lost"),
@@ -96,7 +101,8 @@ public class VoLTEVoiceQualityTestSummary extends Summary {
                         sum("Downlink_RTCP_One_way_Length").alias("Downlink_RTCP_One_way_Length"),
                         sum("Uplink_RTCP_One_way_Length").alias("Uplink_RTCP_One_way_Length"),
                         sum("Uplink_RTP_One_way_Length").alias("Uplink_RTP_One_way_Length"),
-                        sum("Downlink_RTP_One_way_Length").alias("Downlink_RTP_One_way_Length")
+                        sum("Downlink_RTP_One_way_Length").alias("Downlink_RTP_One_way_Length"),
+                        sum("Call_Duration_ms").alias("Call_Duration_ms")
                 );
         return ds;
     }
