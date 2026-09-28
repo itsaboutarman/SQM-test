@@ -66,8 +66,15 @@ public class IMSInfCallSIPSingleInterfaceLake extends Lake {
 
     @Override
     protected Dataset<Row> manipulateData(Dataset<Row> ds) {
+        Column tehranTime = from_utc_timestamp(
+                to_timestamp(from_unixtime(col("Start_Time_s").plus(col("Start_Time_ms").divide(1000))), "yyyy-MM-dd HH:mm:ss"),
+                "Asia/Tehran");
+
         ds = ds.withColumn("Start_Time" ,to_timestamp(from_unixtime(col("Start_Time_s").plus(col("Start_Time_ms").divide(1000))), "yyyy-MM-dd HH:mm:ss"))
                 .withColumn("End_Time" , to_timestamp(from_unixtime(col("Start_Time_s").plus(col("Start_Time_ms").divide(1000)).plus(col("End_Time_ms").divide(1000))), "yyyy-MM-dd HH:mm:ss"))
+                .withColumn("day", date_trunc("day", tehranTime))
+                .withColumn("hour", hour(tehranTime))
+                .withColumn("minute_15", minute(tehranTime).minus(minute(tehranTime).mod(15)))
                 .withColumn("Peer_Access_Location_Info_Name", lit(null).cast(DataTypes.StringType))
                 .withColumn("Original_Called_Party_IMSI", lit(null).cast(DataTypes.StringType));
 
