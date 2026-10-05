@@ -25,6 +25,7 @@ public class AppBuilder {
     private List<Class<?>> layers = new ArrayList<>();
     private String appPackageName;
     private ConfigService config;
+    private BatchApp batchApp;
     public AppBuilder(SparkSession session , ConfigService config, String appPackageName){
         this.session = session;
         this.appPackageName = appPackageName;
@@ -75,6 +76,10 @@ public class AppBuilder {
         return app;
     }
 
+    public  BatchApp buildBatchApp() throws InstantiationException {
+        BatchApp app = instantiateBatchAppObject(appPackageName);
+        return app;
+    }
     private App instantiateAppObject(Source source, Sink sink, String packageName, Map<String, Dataset<Row>> references) throws ir.mohaymen.sqm.exceptions.InstantiationException {
         try {
             Class<?> sourceClass = Class.forName(packageName);
@@ -85,6 +90,17 @@ public class AppBuilder {
             throw new InstantiationException("Error instantiating session object for package: " + packageName, e);
         }
     }
+    private BatchApp instantiateBatchAppObject(String packageName) throws ir.mohaymen.sqm.exceptions.InstantiationException {
+        try {
+            Class<?> sourceClass = Class.forName(packageName);
+            Constructor<?> SourceConstructor = sourceClass.getDeclaredConstructor(SparkSession.class, ConfigService.class);
+            return  (BatchApp) SourceConstructor.newInstance(session ,config);
+        } catch (ClassNotFoundException | NoSuchMethodException | java.lang.InstantiationException | IllegalAccessException |
+                 InvocationTargetException e) {
+            throw new InstantiationException("Error instantiating session object for package: " + packageName, e);
+        }
+    }
+
     private static Source getSourceConnector(String packageName, SparkSession session) throws InstantiationException {
         try {
             Class<?> sourceClass = Class.forName(packageName);

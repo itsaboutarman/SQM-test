@@ -16,7 +16,7 @@ import ir.mohaymen.sqm.connectors.ConnectorAnnotation;
 import ir.mohaymen.sqm.connectors.Sink;
 import ir.mohaymen.sqm.connectors.Source;
 import ir.mohaymen.sqm.exceptions.InstantiationException;
-import ir.mohaymen.sqm.exporters.KeepThriftUpdatedListener;
+import ir.mohaymen.sqm.exporters.AppStatusListener;import ir.mohaymen.sqm.exporters.KeepThriftUpdatedListener;
 import ir.mohaymen.sqm.exporters.StatsListener;
 import ir.mohaymen.sqm.lake.LakeManager;
 import ir.mohaymen.sqm.utils.ConfigService;
@@ -35,11 +35,7 @@ import ir.mohaymen.sqm.metrics.CustomMetricsSource;
 import org.apache.spark.scheduler.SparkListener;
 import org.apache.spark.sql.streaming.StreamingQueryListener;
 import java.lang.reflect.Method;
-import org.apache.spark.scheduler.SparkListener;
-import org.apache.spark.sql.streaming.StreamingQueryListener;
-import ir.mohaymen.listener.CustomSparkListener;
-import ir.mohaymen.listener.config.ListenerConfig;
-// import ir.mohaymen.listener.CustomSparkListener;
+
 
 public class Main {
     private static final Logger logger = Logger.getLogger(Main.class.getName());
@@ -70,10 +66,10 @@ public class Main {
         //registerCustomListeners(session, "ir.mohaymen.listener.CustomSparkListener");
 
         // build time load
-        ListenerConfig listenerConfig = ListenerConfig.fromMap(configService.getOptions());
-        CustomSparkListener listener = new CustomSparkListener(listenerConfig);
-        session.sparkContext().addSparkListener(listener);
-        session.streams().addListener(listener.getStreamingListener());
+//        ListenerConfig listenerConfig = ListenerConfig.fromMap(configService.getOptions());
+//        CustomSparkListener listener = new CustomSparkListener(listenerConfig);
+//        session.sparkContext().addSparkListener(listener);
+//        session.streams().addListener(listener.getStreamingListener());
 
         if (app instanceof Sourcing || app instanceof Lake){
             LakeManager.initialize();
@@ -112,6 +108,14 @@ public class Main {
         if (str == null || str.isEmpty()) return str;
         return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
     }
+    private static BatchApp buildBatchApp(SparkSession session ,String appPackageName) throws InstantiationException {
+        BatchApp app = new AppBuilder(session , configService ,appPackageName)
+                .buildBatchApp();
+        return app;
+    }
+
+
+
 
     private static void registerCustomListeners(SparkSession spark, String className) {
         try {
