@@ -24,7 +24,7 @@ public class SGIDiameterRoamingTraffic extends Summary {
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("Table_ID", "TRANS_RSP_TIME_SEC", "PROTOCOL_ID", "RAT", "INTERFACEID", "ROAM_DIRECTION",
                 "HOMEMCC", "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
-                "TRANS_CAUSE_TYPE", "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
+                "TRANS_CAUSE_TYPE", "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type",
                 "USU_RATING_GROUP_1", "USU_RATING_GROUP_2", "USU_RATING_GROUP_3",
                 "USU_CC_TOTAL_OCTETS_1", "USU_CC_TOTAL_OCTETS_2", "USU_CC_TOTAL_OCTETS_3"
         );
@@ -41,7 +41,7 @@ public class SGIDiameterRoamingTraffic extends Summary {
         ds = aggregateFunc(ds);
         ds = generateKeyHash(ds, new String[]{"Table_ID", "PROTOCOL_ID", "RAT", "INTERFACEID", "ROAM_DIRECTION",
                 "HOMEMCC", "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
-                "TRANS_CAUSE_TYPE", "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
+                "TRANS_CAUSE_TYPE", "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type",
                 "USU_RATING_GROUP_1", "USU_RATING_GROUP_2", "USU_RATING_GROUP_3"});
 
         System.out.println("output schema:");
@@ -55,7 +55,7 @@ public class SGIDiameterRoamingTraffic extends Summary {
                 // RECORD_DATE is TRANS_REQ_TIME_SEC dim in docs
                 .groupBy("Table_ID", "RECORD_DATE", "PROTOCOL_ID", "RAT", "INTERFACEID", "ROAM_DIRECTION",
                         "HOMEMCC", "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
-                        "TRANS_CAUSE_TYPE", "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
+                        "TRANS_CAUSE_TYPE", "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type",
                         "USU_RATING_GROUP_1", "USU_RATING_GROUP_2", "USU_RATING_GROUP_3")
                 .agg(
                         sum("USU_CC_TOTAL_OCTETS_1").alias("USU_CC_TOTAL_OCTETS_1"),

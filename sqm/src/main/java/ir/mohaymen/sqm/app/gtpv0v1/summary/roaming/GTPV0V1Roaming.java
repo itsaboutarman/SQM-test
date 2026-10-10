@@ -25,7 +25,7 @@ public class GTPV0V1Roaming extends Summary {
         return ds.select("Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                 "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "TRANS_TYPE", "SIG_DIRECTION", "TRANS_SUCCED_FLAG",
                 "TRANS_CAUSE", "ACT_TYPE", "NSAPI", "UL_VOLOME", "DL_VOLOME", "MBR_DL_NEG", "MBR_UL_NEG",
-                "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
+                "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type",
                 "TRANS_RSP_TIME_SEC", "TRANS_RSP_TIME_MSEC", "TRANS_REQ_TIME_SEC", "TRANS_REQ_TIME_MSEC"
         );
     }
@@ -49,7 +49,7 @@ public class GTPV0V1Roaming extends Summary {
         ds = generateKeyHash(ds, new String[]{"Table_ID", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                 "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "TRANS_TYPE", "SIG_DIRECTION", "TRANS_SUCCED_FLAG",
                 "TRANS_CAUSE", "ACT_TYPE", "NSAPI", "UL_VOLOME", "DL_VOLOME", "MBR_DL_NEG", "MBR_UL_NEG",
-                "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type"});
+                "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type"});
 
         System.out.println("output schema:");
         ds.printSchema();
@@ -64,7 +64,7 @@ public class GTPV0V1Roaming extends Summary {
                         "Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                         "HOMEMNC", "MCC", "MNC", "PROC_TYPE", "TRANS_TYPE", "SIG_DIRECTION", "TRANS_SUCCED_FLAG",
                         "TRANS_CAUSE", "ACT_TYPE", "NSAPI", "UL_VOLOME", "DL_VOLOME", "MBR_DL_NEG", "MBR_UL_NEG",
-                        "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type")
+                        "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type")
                 .agg(
                         sum("TRANS_SUCCED_FLAG_ALL").alias("Total_Count"),
                         sum("TRANS_SUCCED_FLAG_FALSE").alias("Success_Count"),

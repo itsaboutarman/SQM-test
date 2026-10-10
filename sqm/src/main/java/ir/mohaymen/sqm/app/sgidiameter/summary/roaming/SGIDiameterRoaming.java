@@ -24,7 +24,7 @@ public class SGIDiameterRoaming extends Summary {
     protected Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                 "HOMEMNC", "MCC", "MNC", "TRANS_CAUSE_TYPE", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG"
-                , "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
+                , "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type",
                 "TRANS_RSP_TIME_SEC", "TRANS_RSP_TIME_MSEC", "TRANS_REQ_TIME_SEC", "TRANS_REQ_TIME_MSEC",
                 "USU_CC_TOTAL_OCTETS_1", "USU_CC_TOTAL_OCTETS_2", "USU_CC_TOTAL_OCTETS_3", "RAT",
                 "USU_RATING_GROUP_1", "USU_RATING_GROUP_2", "USU_RATING_GROUP_3"
@@ -49,7 +49,7 @@ public class SGIDiameterRoaming extends Summary {
         ds = aggregateFunc(ds);
         ds = generateKeyHash(ds, new String[]{"Table_ID",  "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                 "HOMEMNC", "MCC", "MNC", "TRANS_CAUSE_TYPE", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
-                "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "RAT", 
+                "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type", "RAT", 
                 "USU_RATING_GROUP_1", "USU_RATING_GROUP_2", "USU_RATING_GROUP_3"});
 
         System.out.println("output schema:");
@@ -62,7 +62,7 @@ public class SGIDiameterRoaming extends Summary {
         ds = ds.withWatermark("RECORD_DATE", "1440 minutes")
                 .groupBy("Table_ID", "RECORD_DATE", "PROTOCOL_ID", "INTERFACEID", "ROAM_DIRECTION", "HOMEMCC",
                         "HOMEMNC", "MCC", "MNC", "TRANS_CAUSE_TYPE", "PROC_TYPE", "TRANS_TYPE", "TRANS_SUCCED_FLAG",
-                        "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "RAT",
+                        "TRANS_CAUSE", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type", "Home_Country", "Home_Operator", "Home_Roaming_Type", "RAT",
                         "USU_RATING_GROUP_1", "USU_RATING_GROUP_2", "USU_RATING_GROUP_3")
                 .agg(
                         sum("TRANS_SUCCED_FLAG_ALL").alias("Total_Count"),

@@ -29,6 +29,15 @@ public class TDRMAPSourcing extends Sourcing {
     @Override
     protected Dataset<Row> analyze(Dataset<Row> ds) {
         Dataset<Row> mccMncRefVisited = references.get("mccMncRef");
+        Dataset<Row> homeMccMncRef = references.get("homeMccMncRef")
+            .select("MCC", "MNC", "Country", "Operator", "Roaming_Type")
+            .withColumnRenamed("Country", "Home_Country")
+            .withColumnRenamed("Operator", "Home_Operator")
+            .withColumnRenamed("Roaming_Type", "Home_Roaming_Type")
+            .withColumnRenamed("MCC", "MCC_Ref")
+            .withColumnRenamed("MNC", "MNC_Ref");
+        homeMccMncRef.persist();
+
         ds = ds.where(col("ROAM_DIRECTION").isNotNull());
 
         // ------------------------------- Network & Roaming Information -------------------------------
@@ -48,13 +57,25 @@ public class TDRMAPSourcing extends Sourcing {
 
         Column mccMncCondVisited = ds.col("Roaming_Prefix").equalTo(mccMncRefVisited.col("MSRN_ref"));
 
+        Column mccMncCondHome = ds.col("HOMEMCC").cast(DataTypes.IntegerType)
+            .equalTo(homeMccMncRef.col("MCC_Ref").cast(DataTypes.IntegerType))
+            .and(ds.col("HOMEMNC").cast(DataTypes.IntegerType)
+            .equalTo(homeMccMncRef.col("MNC_Ref").cast(DataTypes.IntegerType)));
+
         ds = ds.join(broadcast(mccMncRefVisited), mccMncCondVisited, "leftouter")
+                .join(broadcast(homeMccMncRef), mccMncCondHome, "leftouter")
+                .withColumn("Home_Country", coalesce(col("Home_Country"), lit("Unknown")))
+                .withColumn("Home_Operator", coalesce(col("Home_Operator"), lit("Unknown")))
+                .withColumn("Home_Roaming_Type", coalesce(col("Home_Roaming_Type"), lit("Unknown")))
                 .withColumn("Visited_Country", coalesce(col("Visited_Country"), lit("Unknown")))
                 .withColumn("Visited_Operator", coalesce(col("Visited_Operator"), lit("Unknown")))
                 .withColumn("Visited_Roaming_Type", coalesce(col("Visited_Roaming_Type"), lit("Unknown")))
-
+                
+                .drop("MCC_Ref")
+                .drop("MNC_Ref")
                 .drop("MSRN_ref")
                 .drop("Roaming_Prefix");
+
 
         return ds;
     }
