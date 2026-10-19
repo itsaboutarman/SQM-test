@@ -49,6 +49,14 @@ public class Main {
         String appPackageName = getPackage(Job.class, dataFlow);
         configService = ConfigService.initialize(appPackageName);
         SparkSession session = SparkSessionHandler.getSession();
+
+        // A batch job (a class that extends BatchApp) runs once and then the program ends.
+        if (BatchApp.class.isAssignableFrom(Class.forName(appPackageName))) {
+            buildBatchApp(session, appPackageName).run();
+            session.stop();
+            return;
+        }
+
         App app = new AppBuilder(session , configService ,appPackageName)
                 .withSource(getPackage(ConnectorAnnotation.class, capitalize(configService.getOptions().get("source")) + "Source"))
                 .withSink(getPackage(ConnectorAnnotation.class, capitalize(configService.getOptions().get("sink")) + "Sink"))
