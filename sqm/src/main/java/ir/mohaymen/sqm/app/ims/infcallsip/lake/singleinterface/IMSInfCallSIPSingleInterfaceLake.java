@@ -8,6 +8,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.streaming.DataStreamWriter;
 import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.Column;
 import java.util.Map;
 import static org.apache.spark.sql.functions.*;
 import static java.util.stream.Collectors.joining;

@@ -42,7 +42,7 @@ public class IMSInfRegisterSIPSingleInterfaceLake extends Lake {
         Column tehranTime = from_utc_timestamp(col("Start_Time"), "Asia/Tehran");
         
         ds = ds.withColumn("Start_Time" ,to_timestamp(from_unixtime(col("Start_Time_s").plus(col("Start_Time_ms").divide(1000))), "yyyy-MM-dd HH:mm:ss"))
-                .withColumn("End_Time" , to_timestamp(from_unixtime(col("Start_Time_s").plus(col("Start_Time_ms").divide(1000)).plus(col("End_Time_ms").divide(1000))), "yyyy-MM-dd HH:mm:ss"));
+                .withColumn("End_Time" , to_timestamp(from_unixtime(col("Start_Time_s").plus(col("Start_Time_ms").divide(1000)).plus(col("End_Time_ms").divide(1000))), "yyyy-MM-dd HH:mm:ss"))
                 .withColumn("day", date_trunc("day", tehranTime))
                 .withColumn("hour", hour(tehranTime))
                 .withColumn("minute_15", minute(tehranTime).minus(minute(tehranTime).mod(15)));

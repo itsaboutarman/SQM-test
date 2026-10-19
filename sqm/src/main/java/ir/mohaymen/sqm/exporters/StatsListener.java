@@ -7,7 +7,8 @@ import ir.mohaymen.sqm.metrics.CustomMetricsSource;
 import org.apache.spark.SparkEnv;
 import org.apache.spark.sql.streaming.StreamingQueryListener;
 import org.json.JSONObject;
-
+import org.apache.spark.sql.streaming.SourceProgress;
+import org.apache.spark.sql.streaming.StreamingQueryProgress;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +27,20 @@ public class StatsListener extends StreamingQueryListener {
     }
     public void onQueryProgress(final QueryProgressEvent event) {
         String eventJson = event.progress().prettyJson();
+
+        StreamingQueryProgress progress = event.progress();
+        for (SourceProgress source : progress.sources()) {
+            String description = source.description();
+            if (description.startsWith("Delta")) {
+                String startOffset = source.startOffset();
+                String endOffset = source.endOffset();
+                System.out.println(
+                        "batchId=" + progress.batchId()
+                                + ", deltaStart=" + startOffset
+                                + ", deltaEnd=" + endOffset
+                );
+            }
+        }
         JSONObject jsonObj = new JSONObject(eventJson);
         try {
             Map<String, Double> data = extractMetrics(jsonObj);

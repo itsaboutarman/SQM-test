@@ -16,7 +16,7 @@ import ir.mohaymen.sqm.connectors.ConnectorAnnotation;
 import ir.mohaymen.sqm.connectors.Sink;
 import ir.mohaymen.sqm.connectors.Source;
 import ir.mohaymen.sqm.exceptions.InstantiationException;
-import ir.mohaymen.sqm.exporters.AppStatusListener;import ir.mohaymen.sqm.exporters.KeepThriftUpdatedListener;
+import ir.mohaymen.sqm.exporters.KeepThriftUpdatedListener;
 import ir.mohaymen.sqm.exporters.StatsListener;
 import ir.mohaymen.sqm.lake.LakeManager;
 import ir.mohaymen.sqm.utils.ConfigService;
@@ -35,6 +35,10 @@ import ir.mohaymen.sqm.metrics.CustomMetricsSource;
 import org.apache.spark.scheduler.SparkListener;
 import org.apache.spark.sql.streaming.StreamingQueryListener;
 import java.lang.reflect.Method;
+import org.apache.spark.scheduler.SparkListener;
+import org.apache.spark.sql.streaming.StreamingQueryListener;
+import ir.mohaymen.listener.CustomSparkListener;
+import ir.mohaymen.listener.config.ListenerConfig;
 
 
 public class Main {

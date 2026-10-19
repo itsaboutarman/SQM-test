@@ -11,7 +11,7 @@ spec:
     fsGroup: 1000
   containers:
   - name: maven
-    image: docker-sqm.mci.ir/maven-21:v2
+    image: docker-sqm.mci.ir/maven-21:v3
     env:
     - name: JAVA_OPTS
       value: "-Duser.home=/tmp/"

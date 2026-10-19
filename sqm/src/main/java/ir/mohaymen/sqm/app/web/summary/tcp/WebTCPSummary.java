@@ -25,7 +25,7 @@ public class WebTCPSummary extends Summary {
     @Override
     public Dataset<Row> selectColumns(Dataset<Row> ds) {
         return ds.select("RECORD_DATE", "Start_Time_s", "Country", "Region", "Province", "City", "BSC_Name", "RNC_Name", "ENODEB_ID",
-                "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "Protocol", "AVG_DW_RTT_MICRO_SEC", "Application_Name","APN_Edit",
+                "SGW", "PGW", "SGSN", "GGSN", "SGSN_POOL", "RAT", "Protocol_Name", "AVG_DW_RTT_MICRO_SEC", "Application_Name","APN_Edit",
                 "AVG_UL_RTT_MICRO_SEC", "TCP_Connection_Status", "TCP_Connection_Release_Status", "APP_ID","Brand",
                 "Protocol_Category_Name", "Uplink_Traffic", "Downlink_Traffic", "Total_TCP_Connect_RTT_ms",
                 "Server_Side_Uplink_Lost_Packets", "Server_Side_Downlink_Lost_Packets", "User_Side_Uplink_Lost_Packets",
