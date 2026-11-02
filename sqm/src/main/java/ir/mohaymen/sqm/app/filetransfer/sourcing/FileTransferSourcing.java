@@ -37,6 +37,15 @@ public class FileTransferSourcing extends Sourcing {
         Dataset<Row> ggsnRef = getReference("ggsnRef");
         Dataset<Row> sgsnRef = getReference("sgsnRef");
         Dataset<Row> sgw_pgw_ref = getReference("sgwPgwRef");
+
+        ds = ds.where(col("IMSI").isin(
+                "432350332858424",
+                "432350332858425",
+                "432350332858426",
+                "432350332858427",
+                "432350332858428"
+        ));
+        
         // NE Information
         sgsnRef = sgsnRef.withColumnRenamed("NE_Name", "SGSN").withColumnRenamed("Home_SGSN_Pool_Name", "SGSN_POOL");
         ggsnRef = ggsnRef.withColumnRenamed("NE_Name", "GGSN");

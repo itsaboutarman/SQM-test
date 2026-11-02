@@ -1,4 +1,4 @@
-package ir.mohaymen.sqm.app.alarm.baseline;
+package ir.mohaymen.sqm.app.batch.alarm.baseline;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;

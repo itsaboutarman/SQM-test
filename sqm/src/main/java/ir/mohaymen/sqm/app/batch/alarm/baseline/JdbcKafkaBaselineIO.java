@@ -1,5 +1,7 @@
-package ir.mohaymen.sqm.app.alarm.baseline;
+package ir.mohaymen.sqm.app.batch.alarm.baseline;
 
+import ir.mohaymen.sqm.app.batch.alarm.baseline.BaselineIO;
+import ir.mohaymen.sqm.app.batch.alarm.baseline.JsonMessages;
 import org.apache.spark.sql.DataFrameReader;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;

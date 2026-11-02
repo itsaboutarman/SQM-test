@@ -10,7 +10,7 @@ public class CustomMetricsSource implements Source {
 
     // Thread-safe holder for the metric value
     private final AtomicLong avgOffsetsBehindLatest = new AtomicLong(0L);
-    AtomicLong removedExecutors = new AtomicLong(0);
+
     public CustomMetricsSource() {
         this.metricRegistry = new MetricRegistry();
         registerMetrics();
@@ -21,21 +21,12 @@ public class CustomMetricsSource implements Source {
                 MetricRegistry.name("kafka", "averageOffsetsBehindLatestOffset"),
                 (Gauge<Long>) avgOffsetsBehindLatest::get
         );
-
-        metricRegistry.register(
-                MetricRegistry.name("driver", "removedExecutors"),
-                (Gauge<Long>) removedExecutors::get
-        );
     }
+
     // Called from your streaming logic to update the value
     public void updateAverageOffsetsBehind(long value) {
         avgOffsetsBehindLatest.set(value);
     }
-
-    public void incrementFailedExecutors() {
-        removedExecutors.incrementAndGet();
-    }
-
 
     @Override
     public String sourceName() {

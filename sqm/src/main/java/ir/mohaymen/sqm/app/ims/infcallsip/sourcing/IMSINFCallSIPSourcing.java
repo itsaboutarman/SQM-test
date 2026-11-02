@@ -182,8 +182,7 @@ public class IMSINFCallSIPSourcing extends Sourcing {
 
         ds = ds.withColumn("MV_Q850_Cause", coalesce(mvQ850Candidates.toArray(new Column[0])))
                 .withColumn("MV_SIP_Cause", coalesce(mvSipCandidates.toArray(new Column[0])))
-                .withColumn("MV_Text", coalesce(mvTextCandidates.toArray(new Column[0])))
-                .drop("Multi-Vender_Cause");
+                .withColumn("MV_Text", coalesce(mvTextCandidates.toArray(new Column[0])));
 
         
 

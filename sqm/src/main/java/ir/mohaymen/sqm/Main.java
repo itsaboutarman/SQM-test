@@ -39,7 +39,7 @@ import org.apache.spark.scheduler.SparkListener;
 import org.apache.spark.sql.streaming.StreamingQueryListener;
 import ir.mohaymen.listener.CustomSparkListener;
 import ir.mohaymen.listener.config.ListenerConfig;
-
+// import ir.mohaymen.listener.CustomSparkListener;
 
 public class Main {
     private static final Logger logger = Logger.getLogger(Main.class.getName());
@@ -47,29 +47,30 @@ public class Main {
     private static ConfigService configService;
 
     public static void main(String[] args) throws Exception {
-
         String dataFlow = System.getenv("CLASS_NAME");
         //String dataFlow = "IMSourcing";
         String appPackageName = getPackage(Job.class, dataFlow);
         configService = ConfigService.initialize(appPackageName);
         SparkSession session = SparkSessionHandler.getSession();
-
-        // A batch job (a class that extends BatchApp) runs once and then the program ends.
-        if (BatchApp.class.isAssignableFrom(Class.forName(appPackageName))) {
-            buildBatchApp(session, appPackageName).run();
-            session.stop();
-            return;
+        AppBuilder builder = new AppBuilder( session ,configService, appPackageName);
+        Class<?> sourceClass = Class.forName(appPackageName);
+        if (BatchApp.class.isAssignableFrom(sourceClass)){
+            BatchApp batchApp = buildBatchApp(session,appPackageName);
+            BatchAppResult result = batchApp.run();
         }
+        else {
+           App app = buildStreamingApp(session,appPackageName);
+        }
+    }
 
+    private static App buildStreamingApp(SparkSession session ,String appPackageName) throws Exception {
         App app = new AppBuilder(session , configService ,appPackageName)
                 .withSource(getPackage(ConnectorAnnotation.class, capitalize(configService.getOptions().get("source")) + "Source"))
                 .withSink(getPackage(ConnectorAnnotation.class, capitalize(configService.getOptions().get("sink")) + "Sink"))
                 .loadReferences()
                 .addLayers()
                 .build();
-
-
-       CustomMetricsSource customMetricsSource = new CustomMetricsSource();
+        CustomMetricsSource customMetricsSource = new CustomMetricsSource();
         session.sparkContext().env().metricsSystem().registerSource(customMetricsSource);
         StatsListener exporter = new StatsListener(configService.getOptions() ,customMetricsSource);
         session.streams().addListener(exporter);
@@ -78,10 +79,10 @@ public class Main {
         //registerCustomListeners(session, "ir.mohaymen.listener.CustomSparkListener");
 
         // build time load
-//        ListenerConfig listenerConfig = ListenerConfig.fromMap(configService.getOptions());
-//        CustomSparkListener listener = new CustomSparkListener(listenerConfig);
-//        session.sparkContext().addSparkListener(listener);
-//        session.streams().addListener(listener.getStreamingListener());
+        ListenerConfig listenerConfig = ListenerConfig.fromMap(configService.getOptions());
+        CustomSparkListener listener = new CustomSparkListener(listenerConfig);
+        session.sparkContext().addSparkListener(listener);
+        session.streams().addListener(listener.getStreamingListener());
 
         if (app instanceof Sourcing || app instanceof Lake){
             LakeManager.initialize();
@@ -94,14 +95,22 @@ public class Main {
         StreamingQuery query = app.run();
         Logger.getLogger(Main.class.getName()).info(
                 String.format("[Lake Manager] Is app Sourcing or Lake? %b", app instanceof Sourcing || app instanceof Lake));
-
        
         if (KeepThriftUpdatedListener.shouldKeepThriftUpdated(app, configService.getOptions())){
             KeepThriftUpdatedListener keepThriftUpdatedListener= new KeepThriftUpdatedListener(session, configService.getOptions());
             session.streams().addListener(keepThriftUpdatedListener);
         }
         query.awaitTermination();
+        return app;
     }
+
+    private static BatchApp buildBatchApp(SparkSession session ,String appPackageName) throws InstantiationException {
+            BatchApp app = new AppBuilder(session , configService ,appPackageName)
+                    .buildBatchApp();
+            return app;
+    }
+
+
 
     private static String getPackage(Class<? extends Annotation> annotationClass, String className) {
         Reflections reflections = new Reflections(projectPackage);
@@ -120,14 +129,6 @@ public class Main {
         if (str == null || str.isEmpty()) return str;
         return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
     }
-    private static BatchApp buildBatchApp(SparkSession session ,String appPackageName) throws InstantiationException {
-        BatchApp app = new AppBuilder(session , configService ,appPackageName)
-                .buildBatchApp();
-        return app;
-    }
-
-
-
 
     private static void registerCustomListeners(SparkSession spark, String className) {
         try {

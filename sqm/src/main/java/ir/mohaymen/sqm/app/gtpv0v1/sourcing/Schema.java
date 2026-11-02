@@ -55,6 +55,7 @@ public class Schema extends ir.mohaymen.sqm.app.Schema {
                 .add("ARP_NEG", DataTypes.LongType, true)
                 .add("SV", DataTypes.LongType, true)
                 .add("PDP_TYPE", DataTypes.LongType, true)
-                .add("MS_IP2", DataTypes.LongType, true);
+                .add("MS_IP2", DataTypes.LongType, true)
+                .add("Probe_ID", DataTypes.StringType, true);
     }
 }

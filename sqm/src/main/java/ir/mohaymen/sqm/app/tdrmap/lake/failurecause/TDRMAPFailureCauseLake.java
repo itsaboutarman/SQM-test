@@ -153,6 +153,21 @@ public class TDRMAPFailureCauseLake extends Lake {
                 .drop("PROC_TYPE_Key")
                 .drop("PD_Key");
 
+        Dataset<Row> homeRef = references.get("homeMccMncRef")
+                .select(col("MCC").as("home_ref_mcc"), col("MNC").as("home_ref_mnc"), col("Country").as("home_ref_country"),
+                        col("Operator").as("home_ref_operator"), col("Roaming_Type").as("home_ref_roaming_type"));
+        homeRef.persist();
+
+        ds = ds.withColumn("home_mcc_key", regexp_replace(trim(col("HOMEMCC")), "^0+(?=.)", ""))
+                .withColumn("home_mnc_key", regexp_replace(trim(col("HOMEMNC")), "^0+(?=.)", ""));
+
+        ds = ds.join(broadcast(homeRef), ds.col("home_mcc_key").equalTo(homeRef.col("home_ref_mcc"))
+                        .and(ds.col("home_mnc_key").equalTo(homeRef.col("home_ref_mnc"))), "leftouter")
+                .withColumn("Home_Country", coalesce(col("home_ref_country"), lit("Unknown")))
+                .withColumn("Home_Operator", coalesce(col("home_ref_operator"), lit("Unknown")))
+                .withColumn("Home_Roaming_Type", coalesce(col("home_ref_roaming_type"), lit("Unknown")))
+                .drop("home_mcc_key", "home_mnc_key", "home_ref_mcc", "home_ref_mnc", "home_ref_country", "home_ref_operator", "home_ref_roaming_type");
+
         ds.printSchema();
         return ds;
     }

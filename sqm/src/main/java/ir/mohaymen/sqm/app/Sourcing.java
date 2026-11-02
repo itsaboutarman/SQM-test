@@ -29,8 +29,18 @@ public abstract class Sourcing extends SparkApp
     @Override
     public Dataset<Row> process(Dataset<Row> ds){
         ds = analyze(ds);
+
+        String coalescNumPartitionsStr = ConfigService.getInstance().getOptions()
+                .getOrDefault("coalescNumPartitions", "");
+
+        if (!coalescNumPartitionsStr.trim().isEmpty()) {
+            int coalescNumPartitions = Integer.parseInt(coalescNumPartitionsStr.trim());
+            ds = ds.coalesce(coalescNumPartitions);
+        }
+
         return ds;
     }
+
     @Override
     public DataStreamWriter<Row> write(Dataset<Row> ds) throws TimeoutException {
         DataStreamWriter<Row> dw = sink.write(ds);
@@ -38,6 +48,7 @@ public abstract class Sourcing extends SparkApp
         dw = partitionData(dw);
         return dw;
     }
+
     protected Dataset<Row> addTimeColumns(Dataset<Row> ds) {
         ds = ds.withColumn("RECORD_DATE",
                 when(col("RECORD_DATE").isNotNull(), col("RECORD_DATE"))

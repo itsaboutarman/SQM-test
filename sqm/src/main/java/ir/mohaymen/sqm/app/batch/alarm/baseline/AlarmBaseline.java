@@ -1,8 +1,11 @@
-package ir.mohaymen.sqm.app.alarm.baseline;
+package ir.mohaymen.sqm.app.batch.alarm.baseline;
 
 import ir.mohaymen.sqm.app.BatchApp;
 import ir.mohaymen.sqm.app.BatchAppResult;
 import ir.mohaymen.sqm.app.Job;
+import ir.mohaymen.sqm.app.batch.alarm.baseline.AlarmBaselineKpis;
+import ir.mohaymen.sqm.app.batch.alarm.baseline.BaselineIO;
+import ir.mohaymen.sqm.app.batch.alarm.baseline.JdbcKafkaBaselineIO;
 import ir.mohaymen.sqm.utils.ConfigService;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -12,12 +15,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -30,7 +28,7 @@ public class AlarmBaseline extends BatchApp {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final long POLL_MILLIS = 15000;
 
-    private final BaselineIO io;
+    private final ir.mohaymen.sqm.app.batch.alarm.baseline.BaselineIO io;
     private final Supplier<LocalDateTime> clock;
     private final LongConsumer sleeper;
     private final List<LocalDateTime> processedWindows = new ArrayList<LocalDateTime>();

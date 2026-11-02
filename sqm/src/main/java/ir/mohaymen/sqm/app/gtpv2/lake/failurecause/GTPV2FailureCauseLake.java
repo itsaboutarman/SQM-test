@@ -44,7 +44,7 @@ public class GTPV2FailureCauseLake extends Lake {
     protected Dataset<Row> manipulateData(Dataset<Row> ds) {
         ds = ds.where(col("INTERFACEID").equalTo(6)
                 .and(col("TRANS_SUCCED_FLAG").equalTo(1))
-                        .and(col("Visited_Country").equalTo("IRAQ")));
+                        .and(col("Visited_Country").equalTo("IRAQ (418)")));
 
         ds = ds.withColumnRenamed("TABLE_ID", "TABLE_ID_source")
                 .withColumnRenamed("PROTOCOL_ID", "PROTOCOL_ID_source")

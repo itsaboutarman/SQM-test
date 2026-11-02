@@ -37,7 +37,7 @@ public class GTPV0V1FailureCauseLake extends Lake {
                 "MBR_UL_NEG", "TRAFFIC_CLASS_NEG", "THP_NEG", "ARP_NEG", "SV", "PDP_TYPE", "MS_IP2",
                 "RECORD_DATE_TEHRAN","RECORD_DATE", "TAC", "Visited_Country", "Visited_Operator", "Visited_Roaming_Type",
                 "Home_Region", "Home_Country", "Home_Operator", "Home_Roaming_Type", "Brand", "Model", "Technology",
-                "Type", "OS");
+                "Type", "OS", "Probe_ID");
 
     }
 

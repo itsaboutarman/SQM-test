@@ -51,6 +51,7 @@ public class LakeRetentionManager {
 
     private void setRetentionOnLake() {
         logger.warning("[Lake Manager] Setting Retention-related TBL Properties...");
+        
         try {
             while (!DeltaTable.isDeltaTable(session, tablePath)) {
                 Thread.sleep(5000);
